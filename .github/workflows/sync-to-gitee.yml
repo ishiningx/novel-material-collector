@@ -24,14 +24,31 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           
+          # 显示调试信息
+          echo "Gitee User: $GITEE_USER"
+          echo "Gitee Repo: $GITEE_USER/novel-material-collector"
+          
+          # 检查 Gitee 仓库是否存在
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector")
+          echo "Gitee repo check response: $RESPONSE"
+          
+          if [ "$RESPONSE" != "200" ]; then
+            echo "❌ Gitee 仓库不存在，请先在 Gitee 创建仓库: https://gitee.com/projects/new"
+            echo "仓库名称必须是: novel-material-collector"
+            exit 1
+          fi
+          
           # 添加 Gitee 远程仓库
-          git remote add gitee https://${{ secrets.GITEE_USER }}:${{ secrets.GITEE_TOKEN }}@gitee.com/${{ secrets.GITEE_USER }}/novel-material-collector.git
+          git remote add gitee "https://$GITEE_USER:$GITEE_TOKEN@gitee.com/$GITEE_USER/novel-material-collector.git" 2>/dev/null || true
           
           # 推送所有分支和标签
           git push gitee --all --force
           git push gitee --tags --force
+          
+          echo "✅ 同步完成"
 
       - name: Sync Release to Gitee
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_USER: ${{ secrets.GITEE_USER }}
@@ -39,23 +56,29 @@ jobs:
           # 获取当前 tag
           TAG_NAME=${GITHUB_REF#refs/tags/}
           
+          echo "Syncing release for tag: $TAG_NAME"
+          
           # 获取 GitHub Release 信息
           RELEASE_INFO=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
           
-          RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body')
-          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
+          RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body // "See assets to download"')
+          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name // "扫榜助手 $TAG_NAME"')
+          
+          echo "Release name: $RELEASE_NAME"
           
           # 在 Gitee 创建 Release
           curl -X POST \
-            "https://gitee.com/api/v5/repos/${{ secrets.GITEE_USER }}/novel-material-collector/releases" \
+            "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector/releases" \
             -H "Content-Type: application/json" \
             -d "{
-              \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
-              \"tag_name\": \"${TAG_NAME}\",
-              \"name\": \"${RELEASE_NAME}\",
-              \"body\": \"${RELEASE_BODY}\",
+              \"access_token\": \"$GITEE_TOKEN\",
+              \"tag_name\": \"$TAG_NAME\",
+              \"name\": \"$RELEASE_NAME\",
+              \"body\": \"$RELEASE_BODY\",
               \"draft\": false
             }"
+          
+          echo "✅ Release 同步完成"
