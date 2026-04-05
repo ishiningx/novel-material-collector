@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickel-lang/json-schema-store/main/tauri.schema.json",
-  "productName": "扫榜助手",
+  "productName": "novel-material-collector",
   "version": "1.0.0",
   "identifier": "com.novel-material-collector.app",
   "build": {
