@@ -58,6 +58,13 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Delete existing release if exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete ${{ github.ref_name }} --yes || true
+        continue-on-error: true
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
