@@ -40,18 +40,12 @@ jobs:
 
       - name: Get tag to sync
         id: get_tag
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_USER: ${{ secrets.GITEE_USER }}
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            # 使用手动指定的 tag
             TAG_NAME="${{ github.event.inputs.tag }}"
           elif [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            # 如果是 tag 触发，使用当前 tag
             TAG_NAME=${GITHUB_REF#refs/tags/}
           else
-            # 手动触发但未指定 tag，获取最新 release
             LATEST_RELEASE=$(curl -s \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
@@ -62,18 +56,15 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "准备同步 Release: $TAG_NAME"
 
-      - name: Sync Release to Gitee
+      - name: Download GitHub Release Assets
         env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_USER: ${{ secrets.GITEE_USER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
 
-          echo "同步 Release: $TAG_NAME"
-
           # 获取 GitHub Release 信息
           RELEASE_INFO=$(curl -s \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
 
@@ -82,25 +73,42 @@ jobs:
             exit 1
           fi
 
-          RELEASE_BODY=$(echo "$RELEASE_INFO" | jq -r '.body // "See assets to download"')
-          RELEASE_NAME=$(echo "$RELEASE_INFO" | jq -r '.name // "扫榜助手 $TAG_NAME"')
+          RELEASE_ID=$(echo "$RELEASE_INFO" | jq -r '.id')
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
-          # 转义 JSON 字符串中的特殊字符
-          RELEASE_BODY=$(echo "$RELEASE_BODY" | jq -Rs .)
-          RELEASE_NAME=$(echo "$RELEASE_NAME" | jq -Rs .)
+          # 创建下载目录
+          mkdir -p release-assets
+          cd release-assets
 
-          echo "Release name: $RELEASE_NAME"
+          # 下载所有附件
+          echo "$RELEASE_INFO" | jq -r '.assets[] | "\(.name) \(.url)"' | while read -r name url; do
+            echo "下载: $name"
+            curl -L -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -o "$name" "$url"
+          done
+
+          echo "✅ 下载完成"
+          ls -lh
+
+      - name: Create Gitee Release
+        id: create_release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+        run: |
+          TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
 
           # 检查 Gitee Release 是否已存在
           EXISTING_RELEASE=$(curl -s \
             "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector/releases/tags/${TAG_NAME}?access_token=$GITEE_TOKEN")
 
           if echo "$EXISTING_RELEASE" | jq -e '.id' > /dev/null 2>&1; then
-            echo "Release $TAG_NAME 已存在于 Gitee，跳过创建"
+            RELEASE_ID=$(echo "$EXISTING_RELEASE" | jq -r '.id')
+            echo "Release $TAG_NAME 已存在，ID: $RELEASE_ID"
+            echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # 在 Gitee 创建 Release
+          # 创建新 Release
           RESPONSE=$(curl -s -X POST \
             "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector/releases" \
             -H "Content-Type: application/json" \
@@ -113,12 +121,44 @@ jobs:
               \"draft\": false
             }")
 
-          echo "Gitee API 响应: $RESPONSE"
-
           if echo "$RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
-            echo "✅ Release 同步完成"
+            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+            echo "✅ Release 创建成功，ID: $RELEASE_ID"
+            echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
           else
             echo "❌ Release 创建失败"
             echo "$RESPONSE" | jq .
             exit 1
           fi
+
+      - name: Upload Assets to Gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+        run: |
+          RELEASE_ID="${{ steps.create_release.outputs.release_id }}"
+
+          # 上传所有附件
+          cd release-assets
+          for file in *; do
+            if [ -f "$file" ]; then
+              echo "上传: $file"
+
+              # Gitee 上传附件 API
+              RESPONSE=$(curl -s -X POST \
+                "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector/releases/$RELEASE_ID/attach_files" \
+                -H "Content-Type: multipart/form-data" \
+                -F "access_token=$GITEE_TOKEN" \
+                -F "file=@$file")
+
+              if echo "$RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
+                echo "✅ $file 上传成功"
+              else
+                echo "⚠️ $file 上传失败"
+                echo "$RESPONSE" | jq .
+              fi
+            fi
+          done
+
+          echo "✅ Release 同步完成"
+          echo "https://gitee.com/$GITEE_USER/novel-material-collector/releases/tag/${{ steps.get_tag.outputs.tag_name }}"
