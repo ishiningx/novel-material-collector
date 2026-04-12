@@ -105,7 +105,7 @@ export function ReaderView() {
       <header className="h-14 border-b border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex items-center px-4 gap-3 shrink-0">
         <button
           onClick={handleOpenFile}
-          className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-sm rounded-lg hover:bg-primary-400 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-3 py-1.5 bg-primary-200 text-primary-700 text-sm rounded-lg hover:bg-primary-300 transition-colors shadow-sm"
         >
           <Upload size={15} />
           导入文档
@@ -194,7 +194,7 @@ export function ReaderView() {
               </div>
               <button
                 onClick={handleOpenFile}
-                className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary-400 transition-colors"
+                className="px-4 py-2 bg-primary-200 text-primary-700 text-sm rounded-lg hover:bg-primary-300 transition-colors"
               >
                 选择文件
               </button>
@@ -264,7 +264,7 @@ export function ReaderView() {
                       onClick={() => setSelectedCat(cat.name)}
                       className={`px-3 py-1.5 rounded-lg text-sm transition-all border ${
                         selectedCat === cat.name
-                          ? 'bg-primary text-white border-primary shadow-sm'
+                          ? 'bg-primary-200 text-primary-700 border-primary-300 shadow-sm'
                           : 'text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-100 hover:border-primary/50 hover:text-primary'
                       }`}
                     >
@@ -302,7 +302,7 @@ export function ReaderView() {
                 disabled={!selectedCat}
                 className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
                   selectedCat
-                    ? 'bg-primary text-white hover:bg-primary-400 shadow-sm'
+                    ? 'bg-primary-200 text-primary-700 hover:bg-primary-300 shadow-sm'
                     : 'bg-gray-200 dark:bg-dark-200 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                 }`}
               >
