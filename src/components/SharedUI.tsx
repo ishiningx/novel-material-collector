@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Upload, X, Library, BookOpen } from 'lucide-react';
+import { FileText, Upload, X, Library, BookOpen, Scissors, CalendarCheck } from 'lucide-react';
+import { UpdateNotification } from './UpdateNotification';
 
 // Simple toast component with auto-dismiss
 export function Toast({ message, onClose, duration = 5000 }: { message: string; onClose: () => void; duration?: number }) {
@@ -88,11 +89,15 @@ export function AppLayout({
   currentView,
   onViewChange,
   materialCount,
+  analysisCount = 0,
+  currentVersion = '1.0.0',
   children,
 }: {
-  currentView: 'reader' | 'library';
-  onViewChange: (view: 'reader' | 'library') => void;
+  currentView: 'reader' | 'library' | 'analysis' | 'weekly-report';
+  onViewChange: (view: 'reader' | 'library' | 'analysis' | 'weekly-report') => void;
   materialCount: number;
+  analysisCount?: number;
+  currentVersion?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -100,7 +105,7 @@ export function AppLayout({
       {/* Sidebar */}
       <aside className="w-56 border-r border-gray-200 dark:border-dark-100 flex flex-col bg-white dark:bg-dark-50">
         {/* Logo */}
-        <div className="p-4 border-b border-gray-200 dark:border-dark-100">
+        <div className="h-14 px-4 border-b border-gray-200 dark:border-dark-100 flex items-center">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
               <img src="/icon.png" alt="" className="w-full h-full object-cover" />
@@ -120,7 +125,7 @@ export function AppLayout({
             }`}
           >
             <BookOpen size={18} />
-            <span>文档阅读</span>
+            <span>素材收集</span>
           </button>
           <button
             onClick={() => onViewChange('library')}
@@ -138,11 +143,41 @@ export function AppLayout({
               </span>
             )}
           </button>
+
+          <div className="h-px bg-gray-100 dark:bg-dark-100 my-2" />
+
+          <button
+            onClick={() => onViewChange('analysis')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              currentView === 'analysis'
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
+            }`}
+          >
+            <Scissors size={18} />
+            <span>拆文</span>
+            {analysisCount > 0 && (
+              <span className="ml-auto bg-primary/10 text-primary text-xs px-1.5 py-0.5 rounded-full">
+                {analysisCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => onViewChange('weekly-report')}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+              currentView === 'weekly-report'
+                ? 'bg-primary/10 text-primary font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
+            }`}
+          >
+            <CalendarCheck size={18} />
+            <span>本周成果</span>
+          </button>
         </nav>
 
         {/* Footer */}
         <div className="p-3 border-t border-gray-200 dark:border-dark-100">
-          <p className="text-xs text-gray-400 dark:text-gray-600 text-center">v1.0.0</p>
+          <UpdateNotification currentVersion={currentVersion} />
           <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">© Bonnie & Echo</p>
         </div>
       </aside>

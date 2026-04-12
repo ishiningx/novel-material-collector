@@ -86,3 +86,101 @@ button, a, input, select {
 .no-context-menu {
   -webkit-touch-callout: none;
 }
+
+/* Highlight hover effect */
+[data-highlight-ids] {
+  border-radius: 2px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Cancel highlight button animation */
+[data-highlight-ids] button {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Comment panel transition */
+.comment-card {
+  transition: top 0.1s ease-out, opacity 0.15s ease;
+}
+
+/* Highlight text cursor */
+.highlighted-text-area {
+  cursor: text;
+}
+
+/* Color picker animation */
+@keyframes colorPickerIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.color-picker-enter {
+  animation: colorPickerIn 0.15s ease-out;
+}
+
+/* Capybara celebration animation */
+.capybara-container {
+  position: relative;
+  cursor: pointer;
+}
+
+/* Confetti pieces */
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 20px;
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.capybara-container:hover .confetti {
+  animation: confettiFly 0.8s ease-out forwards;
+}
+
+@keyframes confettiFly {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) rotate(var(--rot));
+  }
+}
+
+/* "爆" characters */
+.bao-char {
+  position: absolute;
+  font-size: 20px;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.capybara-container:hover .bao-char {
+  animation: baoPop 1s ease-out forwards;
+}
+
+@keyframes baoPop {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(var(--tx), var(--ty)) scale(1.2) rotate(var(--rot));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--tx) * 1.5), calc(var(--ty) * 2)) scale(0.8) rotate(calc(var(--rot) * 2));
+  }
+}

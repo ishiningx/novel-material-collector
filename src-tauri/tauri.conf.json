@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickel-lang/json-schema-store/main/tauri.schema.json",
-  "productName": "novel-material-collector",
-  "version": "1.0.0",
+  "productName": "小说素材收集",
+  "version": "1.1.0",
   "identifier": "com.novel-material-collector.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -36,5 +36,12 @@
       "icons/icon.ico"
     ]
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://gitee.com/shine100/novel-material-collector/raw/main/latest.json"
+      ],
+      "pubkey": ""
+    }
+  }
 }
