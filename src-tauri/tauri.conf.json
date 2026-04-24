@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nickel-lang/json-schema-store/main/tauri.schema.json",
   "productName": "小说素材收集",
-  "version": "1.1.0",
+  "version": "1.1.5",
   "identifier": "com.novel-material-collector.app",
   "build": {
     "beforeDevCommand": "npm run dev",
