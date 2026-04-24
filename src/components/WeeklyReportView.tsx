@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CalendarCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { useWeeklyReportContext } from '../store/WeeklyReportContext';
 import { useAnalysisContext } from '../store/AnalysisContext';
@@ -30,11 +30,14 @@ export function WeeklyReportView() {
   const totalAnalysisCount = analysisState.analyses.length;
   const totalMaterialCount = materialState.materials.length;
 
-  // Generate report when view is displayed
-  const currentReport = useMemo(() => {
-    if (reportState.loading) return null;
-    return generateCurrentWeekReport(weekAnalysisCount, weekMaterialCount);
-  }, [weekAnalysisCount, weekMaterialCount, reportState.loading]);
+  // Generate report in useEffect to avoid setState during render
+  const currentReport = reportState.reports.find((r) => r.weekStart === weekStart) ?? null;
+
+  useEffect(() => {
+    if (!reportState.loading) {
+      generateCurrentWeekReport(weekAnalysisCount, weekMaterialCount);
+    }
+  }, [weekAnalysisCount, weekMaterialCount, reportState.loading, generateCurrentWeekReport]);
 
   // Historical reports (excluding current week)
   const historicalReports = reportState.reports.filter((r) => r.weekStart !== weekStart);
