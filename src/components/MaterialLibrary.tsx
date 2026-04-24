@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, Trash2, Edit3, X, Check, Tag, Calendar, FileText, Download, FolderPlus } from 'lucide-react';
 import { useMaterialContext } from '../store/MaterialContext';
 import { getCategoryColor, ConfirmDialog, Toast } from './SharedUI';
+import { AddMaterialModal } from './AddMaterialModal';
 import { exportToCSV, exportToMarkdown, exportToTxt, exportToExcel } from '../services/export';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
@@ -9,11 +10,12 @@ import { writeTextFile } from '@tauri-apps/plugin-fs';
 export function MaterialLibrary() {
   const {
     state,
+    addMaterial,
     deleteMaterial,
     updateMaterial,
     getMaterialCountByCategory,
     addCategory,
-    deleteCategory,
+    deleteCategoryAndMigrateMaterials,
   } = useMaterialContext();
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null); // null = all
@@ -27,6 +29,8 @@ export function MaterialLibrary() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
   // Filtered materials
   const filteredMaterials = useMemo(() => {
@@ -53,14 +57,15 @@ export function MaterialLibrary() {
     setToast('素材已删除');
   };
 
-  // Handle delete category
+  // Handle delete category — migrate materials to "未分类"
   const handleDeleteCategory = async (id: string) => {
-    await deleteCategory(id);
-    if (activeCategory === state.categories.find((c) => c.id === id)?.name) {
+    const catName = state.categories.find((c) => c.id === id)?.name;
+    await deleteCategoryAndMigrateMaterials(id);
+    if (activeCategory === catName) {
       setActiveCategory(null);
     }
     setConfirmDeleteCategory(null);
-    setToast('分类已删除');
+    setToast('分类已删除，素材已移至「未分类」');
   };
 
   // Handle add category
@@ -73,6 +78,13 @@ export function MaterialLibrary() {
     }
   };
 
+  // Handle add material from modal
+  const handleAddMaterial = async (content: string, category: string, source: string, note: string) => {
+    await addMaterial(content, category, source || '手动添加', note);
+    setShowAddMaterial(false);
+    setToast('素材已添加');
+  };
+
   // Save note edit
   const handleSaveNote = async (id: string) => {
     const item = state.materials.find((m) => m.id === id);
@@ -81,6 +93,16 @@ export function MaterialLibrary() {
       setEditingId(null);
       setToast('备注已更新');
     }
+  };
+
+  // Handle change material category
+  const handleChangeCategory = async (materialId: string, newCategory: string) => {
+    const item = state.materials.find((m) => m.id === materialId);
+    if (item && item.category !== newCategory) {
+      await updateMaterial({ ...item, category: newCategory });
+      setToast('分类已修改');
+    }
+    setEditingCatId(null);
   };
 
   // Export handler
@@ -153,24 +175,46 @@ export function MaterialLibrary() {
 
           <div className="space-y-0.5">
             {state.categories.map((cat) => (
-              <button
+              <div
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.name)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all group flex items-center justify-between ${
+                className={`group flex items-center rounded-lg transition-all ${
                   activeCategory === cat.name
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-200'
+                    ? 'bg-primary/10'
+                    : 'hover:bg-gray-50 dark:hover:bg-dark-200'
                 }`}
               >
-                <span className="truncate">{cat.name}</span>
-                <span className="text-xs opacity-50">{getMaterialCountByCategory(cat.name)}</span>
-              </button>
+                <button
+                  onClick={() => setActiveCategory(cat.name)}
+                  className={`flex-1 text-left px-3 py-2 text-sm transition-all flex items-center gap-2 ${
+                    activeCategory === cat.name
+                      ? 'text-primary font-medium'
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}
+                >
+                  <span className="truncate flex-1">{cat.name}</span>
+                  <span className="text-xs opacity-50 w-5 text-right shrink-0">{getMaterialCountByCategory(cat.name)}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (cat.name === '未分类') {
+                      setToast('「未分类」为默认分类，不可删除');
+                      return;
+                    }
+                    setConfirmDeleteCategory(cat.id);
+                  }}
+                  className="p-1 mr-1 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                  title={cat.name === '未分类' ? '默认分类，不可删除' : '删除分类'}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Category management */}
-        <div className="p-3 border-t border-gray-100 dark:border-dark-100">
+        <div className="p-3 border-t border-gray-200 dark:border-dark-100">
           {showNewCategory ? (
             <div className="flex gap-1">
               <input
@@ -203,7 +247,7 @@ export function MaterialLibrary() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Search bar and export */}
+        {/* Search bar, add material, and export */}
         <div className="h-14 border-b border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex items-center px-4 gap-3 shrink-0">
           <div className="relative flex-1 max-w-md">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -220,6 +264,15 @@ export function MaterialLibrary() {
               </button>
             )}
           </div>
+
+          {/* Add material button */}
+          <button
+            onClick={() => setShowAddMaterial(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs bg-primary-200 text-primary-700 hover:bg-primary-300 rounded-lg transition-colors shadow-sm"
+          >
+            <Plus size={14} />
+            添加新素材
+          </button>
 
           {/* Export dropdown */}
           <div className="relative">
@@ -298,7 +351,7 @@ export function MaterialLibrary() {
               {filteredMaterials.map((item) => (
                 <div
                   key={item.id}
-                  className={`bg-white dark:bg-dark-50 rounded-xl border border-gray-100 dark:border-dark-100 overflow-hidden transition-all hover:shadow-md hover:border-primary/20 ${
+                  className={`bg-white dark:bg-dark-50 rounded-xl border border-gray-100 dark:border-dark-100 shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-primary/20 ${
                     expandedId === item.id ? 'ring-1 ring-primary/20' : ''
                   }`}
                 >
@@ -306,7 +359,9 @@ export function MaterialLibrary() {
                   <div className="p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed line-clamp-2">
+                        <p className={`text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap ${
+                          expandedId !== item.id ? 'line-clamp-2' : ''
+                        }`}>
                           {item.content}
                         </p>
                       </div>
@@ -314,7 +369,6 @@ export function MaterialLibrary() {
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getCategoryColor(item.category)}`}>
                           {item.category}
                         </span>
-                        {/* 删除按钮 - 始终显示 */}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -330,7 +384,7 @@ export function MaterialLibrary() {
                     <div className="flex items-center gap-3 mt-2.5 text-xs text-gray-400 dark:text-gray-600 cursor-pointer" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                       <span className="flex items-center gap-1">
                         <FileText size={12} />
-                        {item.source}
+                        {expandedId === item.id ? item.source : (item.source.length > 10 ? item.source.slice(0, 10) + '...' : item.source)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar size={12} />
@@ -347,11 +401,45 @@ export function MaterialLibrary() {
 
                   {/* Expanded content */}
                   {expandedId === item.id && (
-                    <div className="px-4 pb-4 pt-0 border-t border-gray-50 dark:border-dark-100 animate-fade-in">
+                    <div className="px-4 pb-4 pt-0 border-t border-gray-100 dark:border-dark-100 animate-fade-in">
                       <div className="pt-3">
-                        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap bg-surface-50 dark:bg-dark rounded-lg p-3 mb-3">
-                          {item.content}
-                        </p>
+                        {/* Category section */}
+                        <div className="flex items-start gap-2 mb-3">
+                          <span className="text-xs text-gray-400 mt-1 shrink-0">分类：</span>
+                          {editingCatId === item.id ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {state.categories.map((cat) => (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => handleChangeCategory(item.id, cat.name)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs transition-all border ${
+                                    item.category === cat.name
+                                      ? 'bg-primary-200 text-primary-700 border-primary-300 shadow-sm'
+                                      : 'text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-100 hover:border-primary/50 hover:text-primary'
+                                  }`}
+                                >
+                                  {cat.name}
+                                </button>
+                              ))}
+                              <button
+                                onClick={() => setEditingCatId(null)}
+                                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              >
+                                取消
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              onClick={() => setEditingCatId(item.id)}
+                              className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:text-primary transition-colors"
+                            >
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getCategoryColor(item.category)}`}>
+                                {item.category}
+                              </span>
+                              <span className="text-xs text-gray-400 ml-1">点击修改</span>
+                            </span>
+                          )}
+                        </div>
 
                         {/* Note section */}
                         <div className="flex items-start gap-2 mb-3">
@@ -414,6 +502,14 @@ export function MaterialLibrary() {
       {/* Toast */}
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
+      {/* Add material modal */}
+      <AddMaterialModal
+        visible={showAddMaterial}
+        categories={state.categories}
+        onConfirm={handleAddMaterial}
+        onClose={() => setShowAddMaterial(false)}
+      />
+
       {/* Confirm delete material */}
       {confirmDelete && (
         <ConfirmDialog
@@ -428,7 +524,7 @@ export function MaterialLibrary() {
       {confirmDeleteCategory && (
         <ConfirmDialog
           title="删除分类"
-          message={`确定要删除这个分类吗？该分类下的 ${getMaterialCountByCategory(state.categories.find((c) => c.id === confirmDeleteCategory)?.name || '')} 条素材将变为无分类状态。`}
+          message={`确定要删除这个分类吗？该分类下的 ${getMaterialCountByCategory(state.categories.find((c) => c.id === confirmDeleteCategory)?.name || '')} 条素材将移至「未分类」。`}
           onConfirm={() => handleDeleteCategory(confirmDeleteCategory)}
           onCancel={() => setConfirmDeleteCategory(null)}
         />

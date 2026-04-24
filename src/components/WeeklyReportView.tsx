@@ -31,17 +31,13 @@ export function WeeklyReportView() {
   const totalMaterialCount = materialState.materials.length;
 
   // Generate report in useEffect to avoid setState during render
+  const currentReport = reportState.reports.find((r) => r.weekStart === weekStart) ?? null;
+
   useEffect(() => {
     if (!reportState.loading) {
       generateCurrentWeekReport(weekAnalysisCount, weekMaterialCount);
     }
-  }, [weekAnalysisCount, weekMaterialCount, reportState.loading]);
-
-  // Get current report from state
-  const currentReport = useMemo(() => {
-    if (reportState.loading) return null;
-    return reportState.reports.find((r) => r.weekStart === weekStart);
-  }, [reportState.reports, reportState.loading, weekStart]);
+  }, [weekAnalysisCount, weekMaterialCount, reportState.loading, generateCurrentWeekReport]);
 
   // Historical reports (excluding current week, deduplicated by weekStart)
   const historicalReports = useMemo(() => {
