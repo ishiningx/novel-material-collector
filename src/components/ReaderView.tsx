@@ -1,14 +1,17 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, Type, Minus, Plus, MoveHorizontal, X, Search } from 'lucide-react';
+import { Upload, Type, Minus, Plus, X } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { parseFile } from '../services/fileParser';
 import { useMaterialContext } from '../store/MaterialContext';
 import { useSettingsContext } from '../store/SettingsContext';
-import { Toast, getCategoryColor } from './SharedUI';
+import { Toast } from './SharedUI';
 import { AVAILABLE_FONTS, FONT_SIZES } from '../types';
+import { CollectPanel } from './CollectPanel';
+import { StatusBar } from './StatusBar';
+import { useSelectionCharCount } from '../hooks/useSelectionCharCount';
 
 export function ReaderView() {
-  const { state: materialState, addMaterial } = useMaterialContext();
+  const { state: materialState, addMaterial, addCategory } = useMaterialContext();
   const { settings, updateSettings } = useSettingsContext();
 
   const [documentTitle, setDocumentTitle] = useState<string | null>(null);
@@ -20,8 +23,9 @@ export function ReaderView() {
   // Collect panel
   const [showCollectPanel, setShowCollectPanel] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [selectedCat, setSelectedCat] = useState<string | null>(null);
-  const [note, setNote] = useState('');
+
+  // Selection char count
+  const selectionCharCount = useSelectionCharCount();
 
   const textRef = useRef<HTMLDivElement>(null);
 
@@ -61,46 +65,38 @@ export function ReaderView() {
       if (text && text.length > 0) {
         e.preventDefault();
         setSelectedText(text);
-        setSelectedCat(null);
-        setNote('');
         setShowCollectPanel(true);
       }
     },
     []
   );
 
-  // Cancel collect
-  const handleCloseCollect = useCallback(() => {
-    setShowCollectPanel(false);
-    setSelectedText('');
-    setSelectedCat(null);
-    setNote('');
-  }, []);
-
-  // Confirm collect
-  const handleConfirmCollect = useCallback(async () => {
-    if (selectedText && selectedCat && documentTitle) {
+  // Confirm collect from CollectPanel
+  const handleConfirmCollect = useCallback(async (text: string, category: string, note: string) => {
+    if (documentTitle) {
       try {
-        const source = documentTitle;
-        await addMaterial(selectedText, selectedCat, source);
-        setToast(`已收藏到「${selectedCat}」`);
+        await addMaterial(text, category, documentTitle, note);
+        setToast(`已收藏到「${category}」`);
         setShowCollectPanel(false);
         setSelectedText('');
-        setSelectedCat(null);
-        setNote('');
         window.getSelection()?.removeAllRanges();
       } catch (err) {
         console.error('Failed to save material:', err);
         setToast('收藏失败，请重试');
       }
     }
-  }, [selectedText, selectedCat, documentTitle, addMaterial]);
+  }, [documentTitle, addMaterial]);
+
+  const handleCloseCollect = useCallback(() => {
+    setShowCollectPanel(false);
+    setSelectedText('');
+  }, []);
 
   // Font controls
   const currentSizeIndex = FONT_SIZES.indexOf(settings.fontSize);
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full">
       {/* Toolbar */}
       <header className="h-14 border-b border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex items-center px-4 gap-3 shrink-0">
         <button
@@ -151,7 +147,6 @@ export function ReaderView() {
         {/* Font size */}
         {documentTitle && (
           <div className="flex items-center gap-1.5">
-            <MoveHorizontal size={14} className="text-gray-400" />
             <button
               onClick={() => currentSizeIndex > 0 && updateSettings({ fontSize: FONT_SIZES[currentSizeIndex - 1] })}
               disabled={currentSizeIndex <= 0}
@@ -169,13 +164,6 @@ export function ReaderView() {
             </button>
           </div>
         )}
-
-        {/* Right side: stats */}
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-xs text-gray-400 dark:text-gray-600">
-            {documentTitle && `${charCount} 字`}
-          </div>
-        </div>
       </header>
 
       {/* Content area */}
@@ -218,100 +206,26 @@ export function ReaderView() {
       </div>
 
       {/* Status bar */}
-      <footer className="h-8 border-t border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex items-center px-4 text-xs text-gray-400 dark:text-gray-600 shrink-0">
-        <span>选中文字右键可收藏到素材库</span>
-        <span className="ml-auto">已收藏 {materialState.materials.length} 条素材</span>
-      </footer>
+      <StatusBar
+        totalChars={charCount}
+        selectionChars={selectionCharCount}
+        leftContent={<span>选中文字右键可收藏到素材库</span>}
+        rightPrefix={<span>已收藏 {materialState.materials.length} 条素材</span>}
+      />
 
       {/* Toast */}
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
-      {/* Collect panel (floating card, not modal) */}
-      {showCollectPanel && selectedText && (
-        <>
-          {/* Semi-transparent backdrop */}
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={handleCloseCollect} />
-          {/* Panel */}
-          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-dark-50 rounded-2xl shadow-2xl border border-gray-200 dark:border-dark-100 w-[420px] animate-fade-in overflow-hidden">
-            {/* Header */}
-            <div className="px-5 py-3 border-b border-gray-100 dark:border-dark-100 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">收藏素材</h3>
-              <button onClick={handleCloseCollect} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Selected text preview */}
-            <div className="px-5 py-3 border-b border-gray-50 dark:border-dark-100">
-              <p className="text-xs text-gray-400 mb-1.5">选中内容：</p>
-              <div className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed max-h-24 overflow-y-auto bg-surface dark:bg-dark rounded-lg p-3 line-clamp-4">
-                {selectedText}
-              </div>
-            </div>
-
-            {/* Category selection */}
-            <div className="px-5 py-3">
-              <p className="text-xs text-gray-500 mb-2 font-medium">选择分类：</p>
-              <div className="flex flex-wrap gap-1.5">
-                {materialState.loading ? (
-                  <span className="text-sm text-gray-400">加载中...</span>
-                ) : materialState.categories.length === 0 ? (
-                  <span className="text-sm text-red-500">分类加载失败，请重启应用</span>
-                ) : (
-                  materialState.categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCat(cat.name)}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-all border ${
-                        selectedCat === cat.name
-                          ? 'bg-primary-200 text-primary-700 border-primary-300 shadow-sm'
-                          : 'text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-100 hover:border-primary/50 hover:text-primary'
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Note input */}
-            <div className="px-5 py-3 border-t border-gray-50 dark:border-dark-100">
-              <input
-                type="text"
-                placeholder="添加备注（可选）"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleConfirmCollect();
-                }}
-                className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-dark-100 bg-surface dark:bg-dark text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-
-            {/* Action buttons */}
-            <div className="px-5 py-3 border-t border-gray-100 dark:border-dark-100 flex justify-end gap-2">
-              <button
-                onClick={handleCloseCollect}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200 rounded-lg transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleConfirmCollect}
-                disabled={!selectedCat}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
-                  selectedCat
-                    ? 'bg-primary-200 text-primary-700 hover:bg-primary-300 shadow-sm'
-                    : 'bg-gray-200 dark:bg-dark-200 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                }`}
-              >
-                收藏
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Collect panel */}
+      <CollectPanel
+        visible={showCollectPanel}
+        selectedText={selectedText}
+        categories={materialState.categories}
+        loading={materialState.loading}
+        onConfirm={handleConfirmCollect}
+        onClose={handleCloseCollect}
+        addCategory={addCategory}
+      />
     </div>
   );
 }
