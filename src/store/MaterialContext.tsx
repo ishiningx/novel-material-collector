@@ -68,6 +68,7 @@ interface MaterialContextValue {
   deleteMaterial: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  deleteCategoryAndMigrateMaterials: (id: string) => Promise<void>;
   getMaterialsByCategory: (category: string) => MaterialItem[];
   getMaterialCountByCategory: (category: string) => number;
   refreshMaterials: () => Promise<void>;
@@ -166,6 +167,25 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_CATEGORY', payload: id });
   };
 
+  const deleteCategoryAndMigrateMaterials = async (id: string) => {
+    const category = state.categories.find((c) => c.id === id);
+    if (!category) return;
+
+    // 将该分类下素材移至"未分类"
+    const updatedMaterials = state.materials.map((m) =>
+      m.category === category.name ? { ...m, category: '未分类' } : m
+    );
+    await saveMaterials(updatedMaterials);
+
+    // 删除分类
+    const remaining = state.categories.filter((c) => c.id !== id);
+    await saveCategories(remaining);
+
+    // 统一 dispatch
+    dispatch({ type: 'SET_MATERIALS', payload: updatedMaterials });
+    dispatch({ type: 'DELETE_CATEGORY', payload: id });
+  };
+
   const getMaterialsByCategory = (category: string): MaterialItem[] => {
     return state.materials.filter((m) => m.category === category);
   };
@@ -188,6 +208,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         deleteMaterial,
         addCategory,
         deleteCategory,
+        deleteCategoryAndMigrateMaterials,
         getMaterialsByCategory,
         getMaterialCountByCategory,
         refreshMaterials,
