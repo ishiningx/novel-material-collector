@@ -22,6 +22,10 @@ export interface AppSettings {
   fontSize: number;
   lastOpenedFile: string | null;
   theme: 'light' | 'dark' | 'system';
+  // Obsidian 路径配置
+  obsidianExampleIndexPath: string;  // 例文索引.md 路径
+  obsidianExampleArchivePath: string;  // 例文存档文件夹路径
+  obsidianHotArchivePath: string;  // 热文库文件夹路径
 }
 
 // Default categories
@@ -40,6 +44,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 18,
   lastOpenedFile: null,
   theme: 'system',
+  obsidianExampleIndexPath: '',
+  obsidianExampleArchivePath: '',
+  obsidianHotArchivePath: '',
 };
 
 // Available fonts for macOS
@@ -189,3 +196,28 @@ export interface DownloadProgress {
   total?: number;
   percent: number;
 }
+
+// ========== Archive Types ==========
+
+// 基础扫榜记录（工具内部存储）
+export interface BasicScanRecord {
+  id: string;
+  fileName: string;  // 文档名称
+  createdAt: string;  // 记录时间
+}
+
+// 收藏记录
+export interface ArchiveRecord {
+  id: string;
+  title: string;  // 作品名称
+  categories: string[];  // 分类标签
+  platform: string;  // 平台
+  coreGimmick: string;  // 核心梗
+  payPoint: string;  // 付费点
+  synopsis: string;  // 梗概
+  highlight: string;  // 亮点
+  isClassic: boolean;  // 是否经典热文
+  originalFileName: string;  // 原始文件名
+  createdAt: string;
+}
+

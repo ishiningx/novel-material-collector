@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { CalendarCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { useWeeklyReportContext } from '../store/WeeklyReportContext';
 import { useAnalysisContext } from '../store/AnalysisContext';
@@ -30,14 +30,30 @@ export function WeeklyReportView() {
   const totalAnalysisCount = analysisState.analyses.length;
   const totalMaterialCount = materialState.materials.length;
 
-  // Generate report when view is displayed
-  const currentReport = useMemo(() => {
-    if (reportState.loading) return null;
-    return generateCurrentWeekReport(weekAnalysisCount, weekMaterialCount);
+  // Generate report in useEffect to avoid setState during render
+  useEffect(() => {
+    if (!reportState.loading) {
+      generateCurrentWeekReport(weekAnalysisCount, weekMaterialCount);
+    }
   }, [weekAnalysisCount, weekMaterialCount, reportState.loading]);
 
-  // Historical reports (excluding current week)
-  const historicalReports = reportState.reports.filter((r) => r.weekStart !== weekStart);
+  // Get current report from state
+  const currentReport = useMemo(() => {
+    if (reportState.loading) return null;
+    return reportState.reports.find((r) => r.weekStart === weekStart);
+  }, [reportState.reports, reportState.loading, weekStart]);
+
+  // Historical reports (excluding current week, deduplicated by weekStart)
+  const historicalReports = useMemo(() => {
+    const seen = new Set<string>();
+    return reportState.reports
+      .filter((r) => r.weekStart !== weekStart)
+      .filter((r) => {
+        if (seen.has(r.weekStart)) return false;
+        seen.add(r.weekStart);
+        return true;
+      });
+  }, [reportState.reports, weekStart]);
 
   if (reportState.loading) {
     return (

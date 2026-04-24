@@ -1,5 +1,5 @@
 import { BaseDirectory, readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import type { MaterialItem, Category, AppSettings, AnalysisRecord, WeeklyReport, EncouragementMessage } from '../types';
+import type { MaterialItem, Category, AppSettings, AnalysisRecord, WeeklyReport, EncouragementMessage, BasicScanRecord, ArchiveRecord } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, DEFAULT_ENCOURAGEMENT_MESSAGES } from '../types';
 
 const DATA_DIR = 'novel-material-collector';
@@ -9,6 +9,7 @@ const SETTINGS_FILE = 'settings.json';
 const ANALYSES_FILE = 'analyses.json';
 const WEEKLY_REPORTS_FILE = 'weekly-reports.json';
 const ENCOURAGEMENT_FILE = 'encouragement-messages.txt';
+const BASIC_SCAN_RECORDS_FILE = 'basic-scan-records.json';
 
 // Ensure data directory exists
 async function ensureDataDir(): Promise<void> {
@@ -266,4 +267,47 @@ function parseEncouragementFile(content: string): EncouragementMessage[] {
   }
 
   return messages;
+}
+
+// === Basic Scan Records CRUD (基础扫榜记录) ===
+
+export async function loadBasicScanRecords(): Promise<BasicScanRecord[]> {
+  try {
+    await ensureDataDir();
+    const content = await readTextFile(`${DATA_DIR}/${BASIC_SCAN_RECORDS_FILE}`, { baseDir: BaseDirectory.AppData });
+    return JSON.parse(content);
+  } catch {
+    return [];
+  }
+}
+
+export async function saveBasicScanRecords(records: BasicScanRecord[]): Promise<void> {
+  try {
+    await ensureDataDir();
+    await writeTextFile(`${DATA_DIR}/${BASIC_SCAN_RECORDS_FILE}`, JSON.stringify(records, null, 2), { baseDir: BaseDirectory.AppData });
+  } catch (err) {
+    console.error('[Storage] saveBasicScanRecords failed:', err);
+    throw err;
+  }
+}
+
+export async function addBasicScanRecord(record: BasicScanRecord): Promise<void> {
+  const records = await loadBasicScanRecords();
+  records.unshift(record);
+  await saveBasicScanRecords(records);
+}
+
+export async function getBasicScanRecordCount(): Promise<number> {
+  const records = await loadBasicScanRecords();
+  return records.length;
+}
+
+// 获取本周扫榜记录数
+export async function getWeeklyBasicScanCount(): Promise<number> {
+  const records = await loadBasicScanRecords();
+  const now = new Date();
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  
+  return records.filter(r => new Date(r.createdAt) >= weekStart).length;
 }

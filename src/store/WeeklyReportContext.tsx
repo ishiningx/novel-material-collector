@@ -115,7 +115,7 @@ export function WeeklyReportProvider({ children }: { children: ReactNode }) {
 
     const newReports = [report, ...state.reports];
     saveWeeklyReports(newReports);
-    dispatch({ type: 'ADD_REPORT', payload: report });
+    dispatch({ type: 'SET_REPORTS', payload: newReports });
     return report;
   };
 

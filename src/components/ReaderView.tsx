@@ -1,18 +1,26 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, Type, Minus, Plus, MoveHorizontal, X, Search } from 'lucide-react';
+import { Upload, Type, Minus, Plus, MoveHorizontal, X, Search, Star } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { parseFile } from '../services/fileParser';
 import { useMaterialContext } from '../store/MaterialContext';
 import { useSettingsContext } from '../store/SettingsContext';
 import { Toast, getCategoryColor } from './SharedUI';
-import { AVAILABLE_FONTS, FONT_SIZES } from '../types';
+import { AVAILABLE_FONTS, FONT_SIZES, type ArchiveRecord } from '../types';
+import { addBasicScanRecord } from '../services/storage';
+import { performArchive } from '../services/archiveService';
+import { ArchiveModal } from './ArchiveModal';
 
-export function ReaderView() {
+interface ReaderViewProps {
+  onArchiveComplete?: () => void;
+}
+
+export function ReaderView({ onArchiveComplete }: ReaderViewProps) {
   const { state: materialState, addMaterial } = useMaterialContext();
   const { settings, updateSettings } = useSettingsContext();
 
   const [documentTitle, setDocumentTitle] = useState<string | null>(null);
   const [documentContent, setDocumentContent] = useState<string>('');
+  const [documentPath, setDocumentPath] = useState<string | null>(null);
   const [charCount, setCharCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -22,6 +30,9 @@ export function ReaderView() {
   const [selectedText, setSelectedText] = useState('');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  
+  // Archive modal
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   const textRef = useRef<HTMLDivElement>(null);
 
@@ -42,8 +53,16 @@ export function ReaderView() {
       const doc = await parseFile(filePath, fileName);
       setDocumentTitle(doc.title);
       setDocumentContent(doc.content);
+      setDocumentPath(filePath);
       setCharCount(doc.charCount);
       updateSettings({ lastOpenedFile: fileName });
+      
+      // 记录基础扫榜记录
+      await addBasicScanRecord({
+        id: `scan-${Date.now()}`,
+        fileName: doc.title,
+        createdAt: new Date().toISOString(),
+      });
     } catch (err) {
       console.error('Failed to parse document:', err);
       setToast('文档解析失败，请确认文件格式正确');
@@ -96,6 +115,28 @@ export function ReaderView() {
     }
   }, [selectedText, selectedCat, documentTitle, addMaterial]);
 
+  // Handle archive
+  const handleArchive = useCallback(async (record: ArchiveRecord) => {
+    if (!settings.obsidianExampleIndexPath || !settings.obsidianExampleArchivePath) {
+      setToast('请先在设置中配置 Obsidian 路径');
+      return;
+    }
+    
+    const result = await performArchive(record, {
+      exampleIndexPath: settings.obsidianExampleIndexPath,
+      exampleArchivePath: settings.obsidianExampleArchivePath,
+      hotArchivePath: settings.obsidianHotArchivePath,
+      originalFilePath: documentPath || undefined,
+    });
+    
+    if (result.success) {
+      setToast('已收藏到例文索引');
+      onArchiveComplete?.();
+    } else {
+      setToast('收藏失败：' + (result.error || '未知错误'));
+    }
+  }, [settings, documentPath, onArchiveComplete]);
+
   // Font controls
   const currentSizeIndex = FONT_SIZES.indexOf(settings.fontSize);
 
@@ -115,10 +156,18 @@ export function ReaderView() {
           <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
             <span className="text-sm truncate max-w-[200px]">{documentTitle}</span>
             <button
+              onClick={() => setShowArchiveModal(true)}
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-primary/10 text-gray-400 hover:text-primary transition-colors"
+              title="收藏到例文索引"
+            >
+              <Star size={14} />
+            </button>
+            <button
               onClick={() => {
                 setDocumentTitle(null);
                 setDocumentContent('');
                 setCharCount(0);
+                setDocumentPath(null);
               }}
               className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-dark-200 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               title="关闭文档"
@@ -312,6 +361,15 @@ export function ReaderView() {
           </div>
         </>
       )}
+      
+      {/* Archive Modal */}
+      <ArchiveModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        fileName={documentTitle || ''}
+        originalFilePath={documentPath || undefined}
+        onArchive={handleArchive}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Upload, X, Library, BookOpen, Scissors, CalendarCheck } from 'lucide-react';
+import { FileText, Upload, X, Library, BookOpen, Scissors, CalendarCheck, Settings } from 'lucide-react';
 import { UpdateNotification } from './UpdateNotification';
 
 // Simple toast component with auto-dismiss
@@ -91,6 +91,7 @@ export function AppLayout({
   materialCount,
   analysisCount = 0,
   currentVersion = '1.0.0',
+  onOpenSettings,
   children,
 }: {
   currentView: 'reader' | 'library' | 'analysis' | 'weekly-report';
@@ -98,6 +99,7 @@ export function AppLayout({
   materialCount: number;
   analysisCount?: number;
   currentVersion?: string;
+  onOpenSettings?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -177,7 +179,18 @@ export function AppLayout({
 
         {/* Footer */}
         <div className="p-3 border-t border-gray-200 dark:border-dark-100">
-          <UpdateNotification currentVersion={currentVersion} />
+          <div className="flex items-center justify-between">
+            <UpdateNotification currentVersion={currentVersion} />
+            {onOpenSettings && (
+              <button
+                onClick={onOpenSettings}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-400 rounded hover:bg-gray-100 dark:hover:bg-dark-200 transition-colors"
+                title="设置"
+              >
+                <Settings size={14} />
+              </button>
+            )}
+          </div>
           <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">© Bonnie & Echo</p>
         </div>
       </aside>
