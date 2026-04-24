@@ -32,6 +32,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-4', name: '情绪描写', isDefault: true, createdAt: '2026-04-02' },
   { id: 'cat-5', name: '人设塑造', isDefault: true, createdAt: '2026-04-02' },
   { id: 'cat-6', name: '付费点设计', isDefault: true, createdAt: '2026-04-02' },
+  { id: 'cat-uncategorized', name: '未分类', isDefault: true, createdAt: '2026-04-24' },
 ];
 
 // Default settings

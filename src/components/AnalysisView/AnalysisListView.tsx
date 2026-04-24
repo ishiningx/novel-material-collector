@@ -95,7 +95,7 @@ export function AnalysisListView({ onOpenAnalysis }: AnalysisListViewProps) {
               return (
                 <div
                   key={analysis.id}
-                  className="bg-white dark:bg-dark-50 rounded-lg border border-gray-100 dark:border-dark-100 px-4 py-2.5 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group flex items-center"
+                  className="bg-white dark:bg-dark-50 rounded-xl border border-gray-100 dark:border-dark-100 shadow-sm px-4 py-3 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group flex items-center"
                   onClick={() => onOpenAnalysis(analysis.id)}
                 >
                   <Scissors size={14} className="text-primary/40 shrink-0 mr-3" />
