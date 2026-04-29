@@ -1,6 +1,6 @@
 {
-  "version": "1.1.5",
+  "version": "1.1.6",
   "releaseDate": "2026-04-29",
-  "releaseNotes": "v1.1.5 更新内容：\n\n新增：\n- Kindle「My Clippings.txt」一键导入素材库\n- 导入的标注统一落入「未分类」，可在素材库中随时调整\n- 导入的标注自动计入「本周成果」\n\n修复：\n- 版本检测更新机制重构，改为「检测新版 → 跳转下载页」\n- 修复多处版本号不同步导致的更新失效问题",
-  "downloadPageUrl": "https://gitee.com/shine100/novel-material-collector/releases"
+  "releaseNotes": "增加Kindle笔记导入素材库功能",
+  "downloadPageUrl": "https://gitee.com/ishiningx/novel-material-collector/releases"
 }
