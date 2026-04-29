@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; font-src 'self' data:"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' https://gitee.com https://raw.giteeusercontent.com ipc: http://ipc.localhost"
     }
   },
   "bundle": {
@@ -39,14 +39,6 @@
       "wix": {
         "language": "zh-CN"
       }
-    }
-  },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://gitee.com/shine100/novel-material-collector/raw/main/latest.json"
-      ],
-      "pubkey": ""
     }
   }
 }

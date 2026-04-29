@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Trash2, Edit3, X, Check, Tag, Calendar, FileText, Download, FolderPlus } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, X, Check, Tag, Calendar, FileText, Download, FolderPlus, BookOpen } from 'lucide-react';
 import { useMaterialContext } from '../store/MaterialContext';
 import { getCategoryColor, ConfirmDialog, Toast } from './SharedUI';
 import { AddMaterialModal } from './AddMaterialModal';
+import { KindleImportModal } from './KindleImportModal';
 import { exportToCSV, exportToMarkdown, exportToTxt, exportToExcel } from '../services/export';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
@@ -11,6 +12,7 @@ export function MaterialLibrary() {
   const {
     state,
     addMaterial,
+    addMaterialsBatch,
     deleteMaterial,
     updateMaterial,
     getMaterialCountByCategory,
@@ -30,6 +32,7 @@ export function MaterialLibrary() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
+  const [showKindleImport, setShowKindleImport] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
 
   // Filtered materials
@@ -274,6 +277,16 @@ export function MaterialLibrary() {
             添加新素材
           </button>
 
+          {/* Import from Kindle */}
+          <button
+            onClick={() => setShowKindleImport(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors border border-gray-200 dark:border-dark-100"
+            title="从 Kindle 的 My Clippings.txt 导入标注"
+          >
+            <BookOpen size={14} />
+            导入 Kindle 标注
+          </button>
+
           {/* Export dropdown */}
           <div className="relative">
             <button
@@ -508,6 +521,23 @@ export function MaterialLibrary() {
         categories={state.categories}
         onConfirm={handleAddMaterial}
         onClose={() => setShowAddMaterial(false)}
+      />
+
+      {/* Kindle import modal */}
+      <KindleImportModal
+        visible={showKindleImport}
+        onImport={(drafts, dedup) => addMaterialsBatch(drafts, dedup)}
+        onClose={() => setShowKindleImport(false)}
+        onDone={(result) => {
+          setShowKindleImport(false);
+          if (result.added === 0 && result.skipped > 0) {
+            setToast(`${result.skipped} 条已存在，均已跳过`);
+          } else if (result.skipped > 0) {
+            setToast(`已导入 ${result.added} 条，跳过 ${result.skipped} 条重复`);
+          } else {
+            setToast(`已导入 ${result.added} 条 Kindle 标注`);
+          }
+        }}
       />
 
       {/* Confirm delete material */}

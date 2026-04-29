@@ -60,10 +60,25 @@ function materialReducer(state: MaterialState, action: MaterialAction): Material
   }
 }
 
+// Payload for batch import (without id; date optional)
+export interface MaterialDraft {
+  content: string;
+  category: string;
+  source: string;
+  note?: string;
+  date?: string;
+}
+
+export interface BatchImportResult {
+  added: number;
+  skipped: number;
+}
+
 // Context value
 interface MaterialContextValue {
   state: MaterialState;
-  addMaterial: (content: string, category: string, source: string, note?: string) => Promise<void>;
+  addMaterial: (content: string, category: string, source: string, note?: string, date?: string) => Promise<void>;
+  addMaterialsBatch: (drafts: MaterialDraft[], dedup?: boolean) => Promise<BatchImportResult>;
   updateMaterial: (item: MaterialItem) => Promise<void>;
   deleteMaterial: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
@@ -118,14 +133,14 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  const addMaterial = async (content: string, category: string, source: string, note = '') => {
+  const addMaterial = async (content: string, category: string, source: string, note = '', date?: string) => {
     try {
       const item: MaterialItem = {
         id: uuidv4(),
         content,
         category,
         source,
-        date: new Date().toISOString().split('T')[0],
+        date: date || new Date().toISOString().split('T')[0],
         note,
       };
       console.log('[MaterialContext] Adding material:', item.id, category);
@@ -136,6 +151,50 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
       console.error('[MaterialContext] addMaterial failed:', err);
       throw err;
     }
+  };
+
+  // Batch import with optional dedup by (source + content) signature
+  const addMaterialsBatch = async (
+    drafts: MaterialDraft[],
+    dedup = true
+  ): Promise<BatchImportResult> => {
+    if (!drafts.length) return { added: 0, skipped: 0 };
+
+    const today = new Date().toISOString().split('T')[0];
+    const existing = state.materials;
+
+    // Build dedup signature set from existing materials
+    const sigOf = (source: string, content: string) =>
+      `${source}::${content.trim()}`;
+    const existingSig = new Set(existing.map((m) => sigOf(m.source, m.content)));
+
+    const newItems: MaterialItem[] = [];
+    let skipped = 0;
+    const batchSig = new Set<string>();
+
+    for (const d of drafts) {
+      const sig = sigOf(d.source, d.content);
+      if (dedup && (existingSig.has(sig) || batchSig.has(sig))) {
+        skipped++;
+        continue;
+      }
+      batchSig.add(sig);
+      newItems.push({
+        id: uuidv4(),
+        content: d.content,
+        category: d.category,
+        source: d.source,
+        date: d.date || today,
+        note: d.note || '',
+      });
+    }
+
+    if (!newItems.length) return { added: 0, skipped };
+
+    const merged = [...newItems, ...existing];
+    await saveMaterials(merged);
+    dispatch({ type: 'SET_MATERIALS', payload: merged });
+    return { added: newItems.length, skipped };
   };
 
   const updateMaterial = async (item: MaterialItem) => {
@@ -204,6 +263,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
       value={{
         state,
         addMaterial,
+        addMaterialsBatch,
         updateMaterial,
         deleteMaterial,
         addCategory,

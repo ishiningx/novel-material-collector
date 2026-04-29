@@ -1,19 +1,6 @@
 {
-  "version": "1.1.0",
-  "notes": "新增功能：\n- 自动更新功能\n- 拆文模块\n- 本周成果周报\n\n优化：\n- 界面更可爱\n- 按钮配色更柔和",
-  "pub_date": "2026-04-12T12:00:00Z",
-  "platforms": {
-    "darwin-aarch64": {
-      "signature": "",
-      "url": "https://gitee.com/shine100/novel-material-collector/releases/download/v1.1.0/novel-material-collector_1.1.0_aarch64.app.tar.gz"
-    },
-    "darwin-x86_64": {
-      "signature": "",
-      "url": "https://gitee.com/shine100/novel-material-collector/releases/download/v1.1.0/novel-material-collector_1.1.0_x64.app.tar.gz"
-    },
-    "windows-x86_64": {
-      "signature": "",
-      "url": "https://gitee.com/shine100/novel-material-collector/releases/download/v1.1.0/novel-material-collector_1.1.0_x64-setup.nsis.zip"
-    }
-  }
+  "version": "1.1.5",
+  "releaseDate": "2026-04-29",
+  "releaseNotes": "v1.1.5 更新内容：\n\n新增：\n- Kindle「My Clippings.txt」一键导入素材库\n- 导入的标注统一落入「未分类」，可在素材库中随时调整\n- 导入的标注自动计入「本周成果」\n\n修复：\n- 版本检测更新机制重构，改为「检测新版 → 跳转下载页」\n- 修复多处版本号不同步导致的更新失效问题",
+  "downloadPageUrl": "https://gitee.com/shine100/novel-material-collector/releases"
 }

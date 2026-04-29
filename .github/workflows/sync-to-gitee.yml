@@ -1,9 +1,11 @@
 name: Sync to Gitee
 
+# 在 Build and Release 成功完成后自动运行，避免两个 workflow 并行导致同步时拿不到 Release 产物
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Build and Release"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -14,37 +16,27 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    # 只有 Build 成功或手动触发才跑
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push to Gitee
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITEE_USER: ${{ secrets.GITEE_USER }}
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
-          # 添加 Gitee 远程仓库
-          git remote add gitee "https://$GITEE_USER:$GITEE_TOKEN@gitee.com/$GITEE_USER/novel-material-collector.git" 2>/dev/null || true
-
-          # 推送所有分支和标签
-          git push gitee --all --force
-          git push gitee --tags --force
-
-          echo "✅ 代码同步完成"
-
-      - name: Get tag to sync
+      - name: Resolve tag
         id: get_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
             TAG_NAME="${{ github.event.inputs.tag }}"
-          elif [ "${{ github.ref }}" != "refs/heads/main" ]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Build and Release 由 push tag 触发时，head_branch 就是 tag 名
+            REF="${{ github.event.workflow_run.head_branch }}"
+            if [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              TAG_NAME="$REF"
+            else
+              echo "Build 不是由 tag 触发（head_branch=$REF），跳过同步"
+              echo "skip=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
           else
             LATEST_RELEASE=$(curl -s \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -56,7 +48,37 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "准备同步 Release: $TAG_NAME"
 
+      - name: Checkout repository
+        if: steps.get_tag.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.get_tag.outputs.tag_name }}
+
+      - name: Push code and tags to Gitee
+        if: steps.get_tag.outputs.skip != 'true'
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: ${{ secrets.GITEE_USER }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # 先更新 main 分支到 tag 对应的 commit，保证 Gitee 上 raw/main/latest.json 是最新的
+          git fetch origin main
+          git checkout main
+          git merge --ff-only ${{ steps.get_tag.outputs.tag_name }} || true
+
+          git remote add gitee "https://$GITEE_USER:$GITEE_TOKEN@gitee.com/$GITEE_USER/novel-material-collector.git" 2>/dev/null || true
+
+          # 推送 main 和所有 tag
+          git push gitee main --force
+          git push gitee --tags --force
+
+          echo "✅ 代码同步完成"
+
       - name: Download GitHub Release Assets
+        if: steps.get_tag.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -90,6 +112,7 @@ jobs:
           ls -lh
 
       - name: Create Gitee Release
+        if: steps.get_tag.outputs.skip != 'true'
         id: create_release
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
@@ -108,18 +131,19 @@ jobs:
             exit 0
           fi
 
+          # 读取 latest.json 里的 releaseNotes 作为 Gitee Release body
+          RELEASE_BODY=$(jq -r '.releaseNotes // "See assets to download and install this version."' latest.json)
+
           # 创建新 Release
           RESPONSE=$(curl -s -X POST \
             "https://gitee.com/api/v5/repos/$GITEE_USER/novel-material-collector/releases" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"access_token\": \"$GITEE_TOKEN\",
-              \"tag_name\": \"$TAG_NAME\",
-              \"name\": \"扫榜助手 $TAG_NAME\",
-              \"body\": \"下载地址：https://gitee.com/$GITEE_USER/novel-material-collector/releases/tag/$TAG_NAME\",
-              \"target_commitish\": \"main\",
-              \"draft\": false
-            }")
+            -d "$(jq -n \
+              --arg token "$GITEE_TOKEN" \
+              --arg tag "$TAG_NAME" \
+              --arg name "扫榜助手 $TAG_NAME" \
+              --arg body "$RELEASE_BODY" \
+              '{access_token:$token, tag_name:$tag, name:$name, body:$body, target_commitish:"main", draft:false}')")
 
           if echo "$RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
             RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
@@ -132,6 +156,7 @@ jobs:
           fi
 
       - name: Upload Assets to Gitee
+        if: steps.get_tag.outputs.skip != 'true'
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITEE_USER: ${{ secrets.GITEE_USER }}

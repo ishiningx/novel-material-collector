@@ -15,9 +15,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Apple Silicon (M1/M2/M3)
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
             target: 'aarch64-apple-darwin'
+          # Intel Mac
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
+          # Windows x64
           - platform: 'windows-latest'
             args: ''
             target: ''
@@ -73,6 +79,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: '扫榜助手 ${{ github.ref_name }}'
           releaseBody: 'See assets to download and install this version.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
