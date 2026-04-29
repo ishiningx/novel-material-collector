@@ -170,12 +170,11 @@ export const DEFAULT_ENCOURAGEMENT_MESSAGES: EncouragementMessage[] = [
 
 // ========== Auto Update Types ==========
 
-export type UpdateStatus = 
+export type UpdateStatus =
   | 'idle'           // 空闲状态
   | 'checking'       // 检查中
   | 'available'      // 有新版本
   | 'not-available'  // 已是最新
-  | 'downloading'    // 下载中
   | 'error';         // 出错
 
 export interface UpdateInfo {
@@ -183,10 +182,4 @@ export interface UpdateInfo {
   currentVersion: string;
   date?: string;
   body?: string;
-}
-
-export interface DownloadProgress {
-  downloaded: number;
-  total?: number;
-  percent: number;
 }
