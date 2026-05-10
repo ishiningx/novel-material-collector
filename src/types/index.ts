@@ -6,6 +6,8 @@ export interface MaterialItem {
   source: string;
   date: string;
   note: string;
+  // 来源例文 id（从分析编辑器加入时自动带）
+  articleId?: string;
 }
 
 // Category for organizing materials
@@ -126,7 +128,7 @@ export interface Comment {
   color: HighlightColor;
 }
 
-// Analysis record (拆文记录)
+// Analysis record (拆文记录) - Legacy, 迁移后无新数据写入
 export interface AnalysisRecord {
   id: string;
   title: string;
@@ -136,6 +138,53 @@ export interface AnalysisRecord {
   createdAt: string;
   updatedAt: string;
 }
+
+// ========== Article Types (统一分析 + 例文库) ==========
+
+export type ArticleStatus = 'draft' | 'archived';
+
+// 例文记录：draft = 草稿（未入例文库），archived = 正式例文（已补充元数据）
+export interface ArticleRecord {
+  id: string;
+  title: string;
+  content: string;
+  highlights: Highlight[];
+  comments: Comment[];
+  createdAt: string;
+  updatedAt: string;
+  status: ArticleStatus;
+  // 例文元数据（draft 态可全空，archived 态建议至少填分类/平台/核心梗）
+  categories?: string[];
+  platform?: string;
+  author?: string;
+  coreGimmick?: string;
+  payPoint?: string;
+  synopsis?: string;
+  highlight?: string;
+  isClassic?: boolean;
+  archivedAt?: string;
+}
+
+// 例文元数据补充入参（archiveArticle 方法使用）
+export interface ArticleMetadata {
+  categories: string[];
+  platform: string;
+  author: string;
+  coreGimmick: string;
+  payPoint: string;
+  synopsis: string;
+  highlight: string;
+  isClassic: boolean;
+}
+
+// 例文库筛选期限
+export type ArticleDateFilter = 'month' | 'halfYear' | 'all';
+
+// 例文题材分类（与素材分类解耦）：现言 / 古言 / 悬疑 / 爽文 / 虐文 等，支持用户自定义新增
+export const DEFAULT_ARTICLE_GENRES: string[] = ['现言', '古言', '悬疑', '爽文', '虐文'];
+
+// 已废弃的题材值，启动时会从 genres 列表及每篇例文的 categories 中清除
+export const DEPRECATED_ARTICLE_GENRES: string[] = ['穿越', '重生', '测试'];
 
 // ========== Weekly Report Types ==========
 

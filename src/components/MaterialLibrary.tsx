@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Trash2, Edit3, X, Check, Tag, Calendar, FileText, Download, FolderPlus, BookOpen } from 'lucide-react';
+import { Search, Plus, Trash2, X, Check, Calendar, FileText, Download, FolderPlus, BookOpen, Scissors } from 'lucide-react';
 import { useMaterialContext } from '../store/MaterialContext';
+import { useArticleContext } from '../store/ArticleContext';
 import { getCategoryColor, ConfirmDialog, Toast } from './SharedUI';
 import { AddMaterialModal } from './AddMaterialModal';
 import { KindleImportModal } from './KindleImportModal';
@@ -19,11 +20,17 @@ export function MaterialLibrary() {
     addCategory,
     deleteCategoryAndMigrateMaterials,
   } = useMaterialContext();
+  const { state: articleState } = useArticleContext();
+
+  // Build articleId -> title map for reverse link display
+  const articleTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    articleState.articles.forEach((a) => map.set(a.id, a.title));
+    return map;
+  }, [articleState.articles]);
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null); // null = all
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editNote, setEditNote] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -88,16 +95,6 @@ export function MaterialLibrary() {
     setToast('素材已添加');
   };
 
-  // Save note edit
-  const handleSaveNote = async (id: string) => {
-    const item = state.materials.find((m) => m.id === id);
-    if (item) {
-      await updateMaterial({ ...item, note: editNote });
-      setEditingId(null);
-      setToast('备注已更新');
-    }
-  };
-
   // Handle change material category
   const handleChangeCategory = async (materialId: string, newCategory: string) => {
     const item = state.materials.find((m) => m.id === materialId);
@@ -160,38 +157,34 @@ export function MaterialLibrary() {
   return (
     <div className="flex h-full">
       {/* Left sidebar: category navigation */}
-      <aside className="w-52 border-r border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex flex-col shrink-0">
+      <aside className="w-52 glass-panel border-r border-gray-200/50 dark:border-gray-700 flex flex-col shrink-0">
         <div className="p-3 flex-1 overflow-y-auto">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all mb-1 ${
+            className={`nav-item w-full mb-0.5 ${
               activeCategory === null
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-dark-200'
+                ? 'nav-item-active'
+                : 'nav-item-inactive'
             }`}
           >
             全部素材
-            <span className="ml-1 text-xs opacity-60">({state.materials.length})</span>
+            <span className="ml-auto text-xs opacity-50">({state.materials.length})</span>
           </button>
 
-          <div className="h-px bg-gray-100 dark:bg-dark-100 my-2" />
+          <div className="h-px bg-gray-200/50 dark:bg-white/10 my-2" />
 
           <div className="space-y-0.5">
             {state.categories.map((cat) => (
               <div
                 key={cat.id}
-                className={`group flex items-center rounded-lg transition-all ${
-                  activeCategory === cat.name
-                    ? 'bg-primary/10'
-                    : 'hover:bg-gray-50 dark:hover:bg-dark-200'
-                }`}
+                className="group flex items-center"
               >
                 <button
                   onClick={() => setActiveCategory(cat.name)}
-                  className={`flex-1 text-left px-3 py-2 text-sm transition-all flex items-center gap-2 ${
+                  className={`nav-item flex-1 min-w-0 ${
                     activeCategory === cat.name
-                      ? 'text-primary font-medium'
-                      : 'text-gray-600 dark:text-gray-400'
+                      ? 'nav-item-active'
+                      : 'nav-item-inactive'
                   }`}
                 >
                   <span className="truncate flex-1">{cat.name}</span>
@@ -206,7 +199,7 @@ export function MaterialLibrary() {
                     }
                     setConfirmDeleteCategory(cat.id);
                   }}
-                  className="p-1 mr-1 text-gray-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                  className="btn-ghost-icon shrink-0"
                   title={cat.name === '未分类' ? '默认分类，不可删除' : '删除分类'}
                 >
                   <Trash2 size={12} />
@@ -226,7 +219,7 @@ export function MaterialLibrary() {
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                 placeholder="输入分类名称"
-                className="flex-1 text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-dark-100 bg-surface dark:bg-dark text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="flex-1 text-xs px-2 py-1.5 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-surface dark:bg-dark text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset"
                 autoFocus
               />
               <button onClick={handleAddCategory} className="text-primary hover:bg-primary/10 p-1 rounded">
@@ -239,7 +232,7 @@ export function MaterialLibrary() {
           ) : (
             <button
               onClick={() => setShowNewCategory(true)}
-              className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors border border-dashed border-gray-200 dark:border-dark-100 hover:border-primary/30"
+              className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors border border-dashed border-gray-200 dark:border-dark-100 hover:border-primary/30"
             >
               <FolderPlus size={14} />
               添加素材分类
@@ -251,7 +244,7 @@ export function MaterialLibrary() {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Search bar, add material, and export */}
-        <div className="h-14 border-b border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 flex items-center px-4 gap-3 shrink-0">
+        <div className="h-16 glass-panel border-b border-gray-200/50 dark:border-gray-700 flex items-center px-4 gap-3 shrink-0">
           <div className="relative flex-1 max-w-md">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -259,7 +252,7 @@ export function MaterialLibrary() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索素材内容、来源或备注..."
-              className="w-full pl-9 pr-3 py-2 text-sm bg-surface dark:bg-dark border border-gray-200 dark:border-dark-100 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 text-sm bg-surface dark:bg-dark ring-1 ring-inset ring-gray-200 dark:ring-dark-100 rounded-full text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -271,7 +264,7 @@ export function MaterialLibrary() {
           {/* Add material button */}
           <button
             onClick={() => setShowAddMaterial(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs bg-primary-200 text-primary-700 hover:bg-primary-300 rounded-lg transition-colors shadow-sm"
+            className="btn-primary"
           >
             <Plus size={14} />
             添加新素材
@@ -280,7 +273,7 @@ export function MaterialLibrary() {
           {/* Import from Kindle */}
           <button
             onClick={() => setShowKindleImport(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors border border-gray-200 dark:border-dark-100"
+            className="btn-ghost"
             title="从 Kindle 的 My Clippings.txt 导入标注"
           >
             <BookOpen size={14} />
@@ -291,7 +284,7 @@ export function MaterialLibrary() {
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors border border-gray-200 dark:border-dark-100"
+              className="btn-ghost"
             >
               <Download size={14} />
               导出素材
@@ -364,8 +357,8 @@ export function MaterialLibrary() {
               {filteredMaterials.map((item) => (
                 <div
                   key={item.id}
-                  className={`bg-white dark:bg-dark-50 rounded-xl border border-gray-100 dark:border-dark-100 shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-primary/20 ${
-                    expandedId === item.id ? 'ring-1 ring-primary/20' : ''
+                  className={`card card-hover overflow-hidden ${
+                    expandedId === item.id ? 'card-selected' : ''
                   }`}
                 >
                   {/* Card header */}
@@ -387,7 +380,7 @@ export function MaterialLibrary() {
                             e.stopPropagation();
                             setConfirmDelete(item.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded transition-colors"
+                          className="btn-ghost-icon"
                           title="删除素材"
                         >
                           <Trash2 size={14} />
@@ -399,16 +392,16 @@ export function MaterialLibrary() {
                         <FileText size={12} />
                         {expandedId === item.id ? item.source : (item.source.length > 10 ? item.source.slice(0, 10) + '...' : item.source)}
                       </span>
+                      {item.articleId && articleTitleMap.has(item.articleId) && (
+                        <span className="flex items-center gap-1 text-primary/70" title={`来自例文：${articleTitleMap.get(item.articleId)}`}>
+                          <Scissors size={11} />
+                          例文
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar size={12} />
                         {item.date}
                       </span>
-                      {item.note && (
-                        <span className="flex items-center gap-1 text-primary/60">
-                          <Tag size={12} />
-                          {item.note.length > 15 ? item.note.slice(0, 15) + '...' : item.note}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -425,10 +418,10 @@ export function MaterialLibrary() {
                                 <button
                                   key={cat.id}
                                   onClick={() => handleChangeCategory(item.id, cat.name)}
-                                  className={`px-2.5 py-1 rounded-lg text-xs transition-all border ${
+                                  className={`chip ${
                                     item.category === cat.name
-                                      ? 'bg-primary-200 text-primary-700 border-primary-300 shadow-sm'
-                                      : 'text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-100 hover:border-primary/50 hover:text-primary'
+                                      ? 'chip-active'
+                                      : 'chip-inactive'
                                   }`}
                                 >
                                   {cat.name}
@@ -454,46 +447,13 @@ export function MaterialLibrary() {
                           )}
                         </div>
 
-                        {/* Note section */}
-                        <div className="flex items-start gap-2 mb-3">
-                          <span className="text-xs text-gray-400 mt-1 shrink-0">备注：</span>
-                          {editingId === item.id ? (
-                            <div className="flex-1 flex gap-2">
-                              <input
-                                type="text"
-                                value={editNote}
-                                onChange={(e) => setEditNote(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSaveNote(item.id)}
-                                className="flex-1 text-sm px-2 py-1 rounded border border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-50 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                                autoFocus
-                              />
-                              <button onClick={() => handleSaveNote(item.id)} className="text-primary hover:bg-primary/10 p-1 rounded">
-                                <Check size={14} />
-                              </button>
-                              <button onClick={() => setEditingId(null)} className="text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200 p-1 rounded">
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <span
-                              onClick={() => { setEditingId(item.id); setEditNote(item.note); }}
-                              className="text-sm text-gray-600 dark:text-gray-400 flex-1 cursor-pointer hover:text-primary transition-colors"
-                            >
-                              {item.note || '点击添加备注...'}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => { setEditingId(item.id); setEditNote(item.note); }}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-                          >
-                            <Edit3 size={12} />
-                            编辑备注
-                          </button>
-                        </div>
+                        {/* Note section - read only */}
+                        {item.note && (
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs text-gray-400 mt-0.5 shrink-0">备注：</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400 flex-1 leading-relaxed whitespace-pre-wrap">{item.note}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

@@ -21,23 +21,24 @@ export default {
           900: '#091215',
         },
         surface: {
-          DEFAULT: '#FAF8F5',
+          DEFAULT: '#F8FAFC',
           50: '#FFFFFF',
-          100: '#F5F3F0',
-          200: '#EDEBE8',
-          300: '#E0DEDB',
+          100: '#F1F5F9',
+          200: '#E2E8F0',
+          300: '#CBD5E1',
         },
         dark: {
-          DEFAULT: '#1E1E1E',
-          50: '#2A2A2A',
+          DEFAULT: '#1c1c1e',
+          50: '#2c2c2e',
           100: '#333333',
-          200: '#444444',
+          200: '#48484a',
         },
       },
       animation: {
         'slide-in': 'slideIn 0.2s ease-out',
         'fade-in': 'fadeIn 0.15s ease-out',
         'toast-in': 'toastIn 0.3s ease-out',
+        'modal-in': 'modalIn 0.2s ease-out',
       },
       keyframes: {
         slideIn: {
@@ -51,6 +52,10 @@ export default {
         toastIn: {
           '0%': { transform: 'translateX(100%)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        modalIn: {
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
     },

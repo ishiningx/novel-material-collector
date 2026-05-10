@@ -1,22 +1,22 @@
 import React from 'react';
-import { useAnalysisContext } from '../../store/AnalysisContext';
+import { useArticleContext } from '../../store/ArticleContext';
 import { AnalysisListView } from './AnalysisListView';
 import { AnalysisEditorView } from './AnalysisEditorView';
 
 export function AnalysisView() {
-  const { state, setCurrentAnalysis } = useAnalysisContext();
+  const { state, setCurrentArticle } = useArticleContext();
 
-  if (state.currentAnalysisId) {
+  if (state.currentArticleId) {
     return (
       <AnalysisEditorView
-        onBack={() => setCurrentAnalysis(null)}
+        onBack={() => setCurrentArticle(null)}
       />
     );
   }
 
   return (
     <AnalysisListView
-      onOpenAnalysis={(id) => setCurrentAnalysis(id)}
+      onOpenArticle={(id) => setCurrentArticle(id)}
     />
   );
 }

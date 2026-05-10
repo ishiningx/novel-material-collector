@@ -92,7 +92,7 @@ export function UpdateNotification({ currentVersion }: UpdateNotificationProps) 
       {status === 'available' && (
         <button
           onClick={() => setShowDetail(true)}
-          className="text-[10px] px-2 py-0.5 bg-primary-200 text-primary-700 rounded hover:bg-primary-300 transition-colors"
+          className="text-[10px] px-2 py-0.5 bg-primary text-white rounded-full hover:opacity-90 transition-colors"
         >
           查看详情
         </button>
@@ -147,8 +147,8 @@ export function UpdateNotification({ currentVersion }: UpdateNotificationProps) 
 
             <button
               onClick={handleOpenDownload}
-              className="w-full py-2 px-3 bg-primary-200 text-primary-700 text-sm rounded-lg
-                         hover:bg-primary-300
+              className="w-full py-2 px-3 bg-primary text-white text-sm rounded-full
+                         hover:opacity-90
                          flex items-center justify-center gap-2 font-medium"
             >
               <ExternalLink size={14} />

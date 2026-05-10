@@ -289,7 +289,7 @@ function SelectStep({
         <button
           onClick={onPick}
           disabled={busy}
-          className="px-4 py-2 text-sm bg-primary-200 text-primary-700 hover:bg-primary-300 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+          className="btn-primary"
         >
           {busy ? '解析中...' : '选择文件'}
         </button>
@@ -518,10 +518,10 @@ function PreviewStep(props: {
             <button
               onClick={onConfirm}
               disabled={selectedCount === 0}
-              className={`px-4 py-1.5 text-xs rounded-lg font-medium transition-colors flex items-center gap-1 ${
+              className={`px-4 py-1.5 text-xs rounded-full font-medium transition-colors flex items-center gap-1 ${
                 selectedCount === 0
                   ? 'bg-gray-200 dark:bg-dark-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-primary-200 text-primary-700 hover:bg-primary-300 shadow-sm'
+                  : 'btn-primary'
               }`}
             >
               <CheckCircle2 size={13} />

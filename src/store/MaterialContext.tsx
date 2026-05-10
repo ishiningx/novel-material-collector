@@ -77,7 +77,7 @@ export interface BatchImportResult {
 // Context value
 interface MaterialContextValue {
   state: MaterialState;
-  addMaterial: (content: string, category: string, source: string, note?: string, date?: string) => Promise<void>;
+  addMaterial: (content: string, category: string, source: string, note?: string, date?: string, articleId?: string) => Promise<void>;
   addMaterialsBatch: (drafts: MaterialDraft[], dedup?: boolean) => Promise<BatchImportResult>;
   updateMaterial: (item: MaterialItem) => Promise<void>;
   deleteMaterial: (id: string) => Promise<void>;
@@ -133,7 +133,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  const addMaterial = async (content: string, category: string, source: string, note = '', date?: string) => {
+  const addMaterial = async (content: string, category: string, source: string, note = '', date?: string, articleId?: string) => {
     try {
       const item: MaterialItem = {
         id: uuidv4(),
@@ -142,6 +142,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         source,
         date: date || new Date().toISOString().split('T')[0],
         note,
+        ...(articleId ? { articleId } : {}),
       };
       console.log('[MaterialContext] Adding material:', item.id, category);
       await saveMaterials([item, ...state.materials]);

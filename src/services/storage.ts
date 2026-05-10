@@ -1,12 +1,15 @@
 import { BaseDirectory, readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import type { MaterialItem, Category, AppSettings, AnalysisRecord, WeeklyReport, EncouragementMessage } from '../types';
-import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, DEFAULT_ENCOURAGEMENT_MESSAGES } from '../types';
+import type { MaterialItem, Category, AppSettings, AnalysisRecord, ArticleRecord, WeeklyReport, EncouragementMessage } from '../types';
+import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, DEFAULT_ENCOURAGEMENT_MESSAGES, DEFAULT_ARTICLE_GENRES } from '../types';
 
 const DATA_DIR = 'novel-material-collector';
 const MATERIALS_FILE = 'materials.json';
 const CATEGORIES_FILE = 'categories.json';
 const SETTINGS_FILE = 'settings.json';
 const ANALYSES_FILE = 'analyses.json';
+const ARTICLES_FILE = 'articles.json';
+const ARTICLE_GENRES_FILE = 'article-genres.json';
+const MIGRATION_FLAG_FILE = 'migration.json';
 const WEEKLY_REPORTS_FILE = 'weekly-reports.json';
 const ENCOURAGEMENT_FILE = 'encouragement-messages.txt';
 
@@ -145,6 +148,126 @@ export async function saveAnalyses(analyses: AnalysisRecord[]): Promise<void> {
     console.error('[Storage] saveAnalyses failed:', err);
     throw err;
   }
+}
+
+// === Articles CRUD (统一分析 + 例文库主存) ===
+
+export async function loadArticles(): Promise<ArticleRecord[]> {
+  try {
+    await ensureDataDir();
+    const content = await readTextFile(`${DATA_DIR}/${ARTICLES_FILE}`, { baseDir: BaseDirectory.AppData });
+    return JSON.parse(content);
+  } catch {
+    return [];
+  }
+}
+
+export async function saveArticles(articles: ArticleRecord[]): Promise<void> {
+  try {
+    await ensureDataDir();
+    await writeTextFile(`${DATA_DIR}/${ARTICLES_FILE}`, JSON.stringify(articles, null, 2), { baseDir: BaseDirectory.AppData });
+  } catch (err) {
+    console.error('[Storage] saveArticles failed:', err);
+    throw err;
+  }
+}
+
+// === Article Genres CRUD (例文题材分类，与素材分类独立) ===
+
+export async function loadArticleGenres(): Promise<string[]> {
+  try {
+    await ensureDataDir();
+    const content = await readTextFile(`${DATA_DIR}/${ARTICLE_GENRES_FILE}`, { baseDir: BaseDirectory.AppData });
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.every((g) => typeof g === 'string')) {
+      return parsed;
+    }
+    return [...DEFAULT_ARTICLE_GENRES];
+  } catch {
+    await saveArticleGenres(DEFAULT_ARTICLE_GENRES);
+    return [...DEFAULT_ARTICLE_GENRES];
+  }
+}
+
+export async function saveArticleGenres(genres: string[]): Promise<void> {
+  try {
+    await ensureDataDir();
+    await writeTextFile(
+      `${DATA_DIR}/${ARTICLE_GENRES_FILE}`,
+      JSON.stringify(genres, null, 2),
+      { baseDir: BaseDirectory.AppData }
+    );
+  } catch (err) {
+    console.error('[Storage] saveArticleGenres failed:', err);
+    throw err;
+  }
+}
+
+// 迁移标志文件
+interface MigrationFlags {
+  migratedV2?: boolean;  // 是否已完成 analyses → articles 迁移
+  hasSeenV2Intro?: boolean;  // 是否看过升级引导弹窗
+}
+
+export async function loadMigrationFlags(): Promise<MigrationFlags> {
+  try {
+    await ensureDataDir();
+    const content = await readTextFile(`${DATA_DIR}/${MIGRATION_FLAG_FILE}`, { baseDir: BaseDirectory.AppData });
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+
+export async function saveMigrationFlags(flags: MigrationFlags): Promise<void> {
+  try {
+    await ensureDataDir();
+    await writeTextFile(`${DATA_DIR}/${MIGRATION_FLAG_FILE}`, JSON.stringify(flags, null, 2), { baseDir: BaseDirectory.AppData });
+  } catch (err) {
+    console.error('[Storage] saveMigrationFlags failed:', err);
+    throw err;
+  }
+}
+
+/**
+ * 将老 AnalysisRecord 迁移为 ArticleRecord (status=draft)。
+ * - 幂等：重复调用安全
+ * - articles.json 已存在且非空 → 跳过
+ * - 旧 analyses.json 不删，留作备份
+ * @returns 本次迁移的记录数（0 表示不需要迁移或已迁移过）
+ */
+export async function migrateAnalysesToArticles(): Promise<number> {
+  const flags = await loadMigrationFlags();
+  if (flags.migratedV2) return 0;
+
+  const existingArticles = await loadArticles();
+  if (existingArticles.length > 0) {
+    await saveMigrationFlags({ ...flags, migratedV2: true });
+    return 0;
+  }
+
+  const oldAnalyses = await loadAnalyses();
+  if (oldAnalyses.length === 0) {
+    await saveMigrationFlags({ ...flags, migratedV2: true });
+    return 0;
+  }
+
+  const migrated: ArticleRecord[] = oldAnalyses.map((a) => ({
+    id: a.id,
+    title: a.title,
+    content: a.content,
+    highlights: a.highlights,
+    comments: a.comments,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+    status: 'draft' as const,
+  }));
+
+  await saveArticles(migrated);
+  await saveMigrationFlags({ ...flags, migratedV2: true });
+
+  console.log(`[Storage] Migrated ${migrated.length} analyses to articles (all as draft)`);
+  return migrated.length;
 }
 
 // === Weekly Reports CRUD ===

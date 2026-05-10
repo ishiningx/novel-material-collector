@@ -81,10 +81,10 @@ export function AddMaterialModal({ visible, categories, onConfirm, onClose }: Ad
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCat(cat.name)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-all border ${
+                  className={`px-3 py-1.5 rounded-full text-sm transition-all ring-1 ring-inset ${
                     selectedCat === cat.name
-                      ? 'bg-primary-200 text-primary-700 border-primary-300 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 border-gray-200 dark:border-dark-100 hover:border-primary/50 hover:text-primary'
+                      ? 'bg-primary text-white ring-primary'
+                      : 'text-gray-600 dark:text-gray-400 ring-gray-200 dark:ring-dark-100 hover:ring-primary/50 hover:text-primary'
                   }`}
                 >
                   {cat.name}
@@ -129,9 +129,9 @@ export function AddMaterialModal({ visible, categories, onConfirm, onClose }: Ad
           <button
             onClick={handleConfirm}
             disabled={!canSubmit || submitting}
-            className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 text-sm rounded-full font-medium transition-colors ${
               canSubmit && !submitting
-                ? 'bg-primary-200 text-primary-700 hover:bg-primary-300 shadow-sm'
+                ? 'btn-primary'
                 : 'bg-gray-200 dark:bg-dark-200 text-gray-400 dark:text-gray-600 cursor-not-allowed'
             }`}
           >

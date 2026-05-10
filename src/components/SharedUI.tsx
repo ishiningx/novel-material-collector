@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Upload, X, Library, BookOpen, Scissors, CalendarCheck } from 'lucide-react';
+import { FileText, Upload, X, Library, BookOpen, CalendarCheck } from 'lucide-react';
 import { UpdateNotification } from './UpdateNotification';
 
 // Simple toast component with auto-dismiss
@@ -11,7 +11,7 @@ export function Toast({ message, onClose, duration = 5000 }: { message: string; 
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-toast-in">
-      <div className="bg-emerald-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
+      <div className="bg-emerald-500 text-white px-4 py-2.5 rounded-[14px] shadow-lg flex items-center gap-2 text-sm">
         <span>{message}</span>
         <button onClick={onClose} className="hover:bg-emerald-600 rounded p-0.5">
           <X size={14} />
@@ -35,19 +35,19 @@ export function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in">
-      <div className="bg-white dark:bg-dark-50 rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-slide-in">
+      <div className="bg-white dark:bg-dark-50 rounded-[14px] shadow-2xl p-6 max-w-sm w-full mx-4 animate-modal-in">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{message}</p>
         <div className="flex justify-end gap-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200 rounded-lg transition-colors"
+            className="btn-ghost"
           >
             取消
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            className="px-4 py-2 text-sm bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
           >
             确认删除
           </button>
@@ -93,8 +93,8 @@ export function AppLayout({
   currentVersion = '1.0.0',
   children,
 }: {
-  currentView: 'reader' | 'library' | 'analysis' | 'weekly-report';
-  onViewChange: (view: 'reader' | 'library' | 'analysis' | 'weekly-report') => void;
+  currentView: 'analysis' | 'library' | 'weekly-report';
+  onViewChange: (view: 'analysis' | 'library' | 'weekly-report') => void;
   materialCount: number;
   analysisCount?: number;
   currentVersion?: string;
@@ -103,82 +103,71 @@ export function AppLayout({
   return (
     <div className="flex h-screen bg-surface dark:bg-dark">
       {/* Sidebar */}
-      <aside className="w-56 border-r border-gray-200 dark:border-dark-100 flex flex-col bg-white dark:bg-dark-50">
+      <aside className="w-56 glass-panel flex flex-col">
         {/* Logo */}
-        <div className="h-14 px-4 border-b border-gray-200 dark:border-dark-100 flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+        <div className="h-16 px-5 flex items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[10px] flex items-center justify-center overflow-hidden ring-1 ring-black/5">
               <img src="/icon.png" alt="" className="w-full h-full object-cover" />
             </div>
-            <span className="font-semibold text-gray-900 dark:text-gray-100">扫榜助手</span>
+            <span className="font-semibold tracking-tight text-gray-900 dark:text-gray-100">素材收集助手</span>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1">
-          <button
-            onClick={() => onViewChange('reader')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-              currentView === 'reader'
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
-            }`}
-          >
-            <BookOpen size={18} />
-            <span>素材收集</span>
-          </button>
-          <button
-            onClick={() => onViewChange('library')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-              currentView === 'library'
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
-            }`}
-          >
-            <Library size={18} />
-            <span>素材库</span>
-            {materialCount > 0 && (
-              <span className="ml-auto bg-primary/10 text-primary text-xs px-1.5 py-0.5 rounded-full">
-                {materialCount}
-              </span>
-            )}
-          </button>
-
-          <div className="h-px bg-gray-100 dark:bg-dark-100 my-2" />
-
+        <nav className="flex-1 p-3 space-y-0.5">
           <button
             onClick={() => onViewChange('analysis')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
+            className={`nav-item w-full text-left ${
               currentView === 'analysis'
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
+                ? 'nav-item-active'
+                : 'nav-item-inactive'
             }`}
           >
-            <Scissors size={18} />
-            <span>拆文</span>
+            <BookOpen size={18} strokeWidth={1.5} />
+            <span>分析</span>
             {analysisCount > 0 && (
-              <span className="ml-auto bg-primary/10 text-primary text-xs px-1.5 py-0.5 rounded-full">
+              <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
                 {analysisCount}
               </span>
             )}
           </button>
           <button
-            onClick={() => onViewChange('weekly-report')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-              currentView === 'weekly-report'
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
+            onClick={() => onViewChange('library')}
+            className={`nav-item w-full text-left ${
+              currentView === 'library'
+                ? 'nav-item-active'
+                : 'nav-item-inactive'
             }`}
           >
-            <CalendarCheck size={18} />
+            <Library size={18} strokeWidth={1.5} />
+            <span>素材库</span>
+            {materialCount > 0 && (
+              <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
+                {materialCount}
+              </span>
+            )}
+          </button>
+
+          <div className="h-px bg-gray-200/50 dark:bg-white/5 my-2.5" />
+
+          <button
+            onClick={() => onViewChange('weekly-report')}
+            className={`nav-item w-full text-left ${
+              currentView === 'weekly-report'
+                ? 'nav-item-active'
+                : 'nav-item-inactive'
+            }`}
+          >
+            <CalendarCheck size={18} strokeWidth={1.5} />
             <span>本周成果</span>
           </button>
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-gray-200 dark:border-dark-100">
+        <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
           <UpdateNotification currentVersion={currentVersion} />
-          <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-1">© Bonnie & Echo</p>
+          <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-2">© Bonnie & Echo</p>
         </div>
       </aside>
 

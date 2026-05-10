@@ -74,7 +74,53 @@ body {
 
 /* Smooth transitions for all interactive elements */
 button, a, input, select {
-  transition: all 0.15s ease;
+  transition: all 0.2s ease-out;
+}
+
+/* Component-level utility classes */
+@layer components {
+  .card {
+    @apply bg-white dark:bg-dark-50 rounded-[14px] ring-1 ring-black/5 shadow-[0_1px_2px_rgba(0,0,0,0.04)];
+  }
+  .card-hover {
+    @apply hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] hover:-translate-y-0.5;
+  }
+  .card-selected {
+    @apply ring-2 ring-primary/40;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 bg-primary text-white hover:opacity-90 dark:bg-primary dark:text-white dark:hover:opacity-90 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition-all;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center gap-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-200 rounded-full px-3 py-1.5 text-sm transition-colors;
+  }
+  .btn-ghost-icon {
+    @apply inline-flex items-center justify-center p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-dark-200 rounded-full transition-colors;
+  }
+  .nav-item {
+    @apply relative flex items-center gap-3 px-3 py-2.5 rounded-full text-sm text-left transition-all;
+  }
+  .nav-item-active {
+    @apply bg-black/[0.04] dark:bg-white/[0.08] text-gray-900 dark:text-gray-100 before:absolute before:left-[-4px] before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-5 before:bg-primary before:rounded-r-full;
+  }
+  .nav-item-inactive {
+    @apply text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full transition-colors;
+  }
+  .chip-active {
+    @apply bg-primary text-white dark:bg-primary dark:text-white;
+  }
+  .chip-inactive {
+    @apply ring-1 ring-inset ring-gray-200 dark:ring-dark-100 text-gray-600 dark:text-gray-400 hover:ring-gray-400/50;
+  }
+  .section-label {
+    @apply text-[11px] tracking-wide uppercase text-gray-400 dark:text-gray-500 font-medium;
+  }
+  .glass-panel {
+    @apply bg-white/80 dark:bg-dark/80 backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10;
+  }
 }
 
 /* Prevent text selection during drag */
