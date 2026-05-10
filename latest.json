@@ -1,6 +1,6 @@
 {
-  "version": "1.1.6",
-  "releaseDate": "2026-04-29",
-  "releaseNotes": "增加Kindle笔记导入素材库功能",
+  "version": "1.1.7",
+  "releaseDate": "2026-05-10",
+  "releaseNotes": "素材收集、合并成分例文存档例文库，支持筛选搜索",
   "downloadPageUrl": "https://gitee.com/ishiningx/novel-material-collector/releases"
 }
