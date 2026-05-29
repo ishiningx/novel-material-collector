@@ -24,11 +24,12 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
 
   // Archived tab filters
   const [keyword, setKeyword] = useState('');
-  const [selectedGimmick, setSelectedGimmick] = useState('');
+  const [selectedGimmicks, setSelectedGimmicks] = useState<string[]>([]);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [platform, setPlatform] = useState('');
   const [dateFilter, setDateFilter] = useState<ArticleDateFilter>('all');
   const [onlyClassic, setOnlyClassic] = useState(false);
+  const [gimmickExpanded, setGimmickExpanded] = useState(false);
 
   // Batch selection (archived tab)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -38,8 +39,8 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
   const drafts = useMemo(() => getArticlesByStatus('draft'), [state.articles]);
   const archivedAll = useMemo(() => getArticlesByStatus('archived'), [state.articles]);
   const archivedFiltered = useMemo(
-    () => filterArchived({ keyword, coreGimmick: selectedGimmick, categories: selectedCats, platform, dateFilter, onlyClassic }),
-    [keyword, selectedGimmick, selectedCats, platform, dateFilter, onlyClassic, state.articles]
+    () => filterArchived({ keyword, coreGimmicks: selectedGimmicks.length > 0 ? selectedGimmicks : undefined, categories: selectedCats, platform, dateFilter, onlyClassic }),
+    [keyword, selectedGimmicks, selectedCats, platform, dateFilter, onlyClassic, state.articles]
   );
 
   // All archived platforms / categories for filter dropdowns
@@ -58,8 +59,9 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
   const availableGimmicks = useMemo(() => {
     const set = new Set<string>();
     archivedAll.forEach((a) => {
-      const g = (a.coreGimmick || '').trim();
-      if (g) set.add(g);
+      (a.coreGimmick || []).forEach((g) => {
+        if (g.trim()) set.add(g.trim());
+      });
     });
     return Array.from(set);
   }, [archivedAll]);
@@ -75,7 +77,7 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
     setLoading(true);
     try {
       const filePath = selected as string;
-      const fileName = filePath.split('/').pop() || 'untitled';
+      const fileName = filePath.split(/[/\\]/).pop() || 'untitled';
       const doc = await parseFile(filePath, fileName);
       const article = await addArticle(doc.title, doc.content);
       onOpenArticle(article.id);
@@ -132,14 +134,14 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
 
   const resetFilters = () => {
     setKeyword('');
-    setSelectedGimmick('');
+    setSelectedGimmicks([]);
     setSelectedCats([]);
     setPlatform('');
     setDateFilter('all');
     setOnlyClassic(false);
   };
 
-  const hasActiveFilters = keyword || selectedGimmick || selectedCats.length > 0 || platform || dateFilter !== 'all' || onlyClassic;
+  const hasActiveFilters = keyword || selectedGimmicks.length > 0 || selectedCats.length > 0 || platform || dateFilter !== 'all' || onlyClassic;
 
   return (
     <div className="flex flex-col h-full">
@@ -251,16 +253,45 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
             {/* Core gimmicks */}
             {availableGimmicks.length > 0 && (
               <FilterGroup label="核心梗">
-                <FilterChip active={selectedGimmick === ''} onClick={() => setSelectedGimmick('')}>全部</FilterChip>
-                {availableGimmicks.map((g) => (
-                  <FilterChip
-                    key={g}
-                    active={selectedGimmick === g}
-                    onClick={() => setSelectedGimmick(selectedGimmick === g ? '' : g)}
-                  >
-                    <span className="inline-block max-w-[140px] truncate align-middle" title={g}>{g}</span>
-                  </FilterChip>
-                ))}
+                {(() => {
+                  const maxVisible = 8;
+                  const collapsed = !gimmickExpanded && availableGimmicks.length > maxVisible;
+                  const visible = collapsed ? availableGimmicks.slice(0, maxVisible) : availableGimmicks;
+                  const toggleGimmick = (g: string) => {
+                    setSelectedGimmicks((prev) =>
+                      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
+                    );
+                  };
+                  return (
+                    <>
+                      {visible.map((g) => (
+                        <FilterChip
+                          key={g}
+                          active={selectedGimmicks.includes(g)}
+                          onClick={() => toggleGimmick(g)}
+                        >
+                          <span className="inline-block max-w-[140px] truncate align-middle" title={g}>{g}</span>
+                        </FilterChip>
+                      ))}
+                      {collapsed && (
+                        <button
+                          onClick={() => setGimmickExpanded(true)}
+                          className="chip chip-inactive text-xs"
+                        >
+                          展开更多 ({availableGimmicks.length - maxVisible})
+                        </button>
+                      )}
+                      {gimmickExpanded && availableGimmicks.length > maxVisible && (
+                        <button
+                          onClick={() => setGimmickExpanded(false)}
+                          className="chip chip-inactive text-xs"
+                        >
+                          收起
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
               </FilterGroup>
             )}
 
@@ -581,9 +612,9 @@ function ArchivedList({
                     <span className="text-gray-400">平台：</span>{article.platform}
                   </div>
                 )}
-                {article.coreGimmick && (
+                {(article.coreGimmick && article.coreGimmick.length > 0) && (
                   <div className="text-gray-600 dark:text-gray-300 line-clamp-2">
-                    <span className="text-gray-400">核心梗：</span>{article.coreGimmick}
+                    <span className="text-gray-400">核心梗：</span>{(article.coreGimmick || []).join('、')}
                   </div>
                 )}
               </div>

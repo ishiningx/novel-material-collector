@@ -24,6 +24,7 @@ export interface AppSettings {
   fontSize: number;
   lastOpenedFile: string | null;
   theme: 'light' | 'dark' | 'system';
+  sidebarCollapsed: boolean;
 }
 
 // Default categories
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 18,
   lastOpenedFile: null,
   theme: 'system',
+  sidebarCollapsed: false,
 };
 
 // Available fonts for macOS
@@ -157,7 +159,7 @@ export interface ArticleRecord {
   categories?: string[];
   platform?: string;
   author?: string;
-  coreGimmick?: string;
+  coreGimmick?: string[];
   payPoint?: string;
   synopsis?: string;
   highlight?: string;
@@ -170,7 +172,7 @@ export interface ArticleMetadata {
   categories: string[];
   platform: string;
   author: string;
-  coreGimmick: string;
+  coreGimmick: string[];
   payPoint: string;
   synopsis: string;
   highlight: string;
@@ -231,4 +233,24 @@ export interface UpdateInfo {
   currentVersion: string;
   date?: string;
   body?: string;
+}
+
+// ========== Work Record Types ==========
+
+export interface WorkRecord {
+  id: string;
+  name: string;
+  wordCount: number;
+  guaranteeFee?: number;
+  shareFee?: number;
+  fullAttendance?: number;
+  copyright?: number;
+  totalFee: number;
+  platform: string;
+  data: string;
+  hypothesis: string;
+  verificationResult: string;
+  publishDate: string;
+  createdAt: string;
+  updatedAt: string;
 }

@@ -41,6 +41,8 @@ export function MaterialLibrary() {
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [showKindleImport, setShowKindleImport] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
 
   // Filtered materials
   const filteredMaterials = useMemo(() => {
@@ -103,6 +105,21 @@ export function MaterialLibrary() {
       setToast('分类已修改');
     }
     setEditingCatId(null);
+  };
+
+  const handleUpdateNote = async (materialId: string) => {
+    const item = state.materials.find((m) => m.id === materialId);
+    if (item && item.note !== noteDraft) {
+      await updateMaterial({ ...item, note: noteDraft });
+      setToast('备注已更新');
+    }
+    setEditingNoteId(null);
+    setNoteDraft('');
+  };
+
+  const handleStartEditNote = (id: string, note: string) => {
+    setEditingNoteId(id);
+    setNoteDraft(note);
   };
 
   // Export handler
@@ -447,13 +464,45 @@ export function MaterialLibrary() {
                           )}
                         </div>
 
-                        {/* Note section - read only */}
-                        {item.note && (
-                          <div className="flex items-start gap-2">
-                            <span className="text-xs text-gray-400 mt-0.5 shrink-0">备注：</span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400 flex-1 leading-relaxed whitespace-pre-wrap">{item.note}</span>
-                          </div>
-                        )}
+                        {/* Note section */}
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-gray-400 mt-0.5 shrink-0">备注：</span>
+                          {editingNoteId === item.id ? (
+                            <div className="flex-1 flex gap-2">
+                              <input
+                                value={noteDraft}
+                                onChange={(e) => setNoteDraft(e.target.value)}
+                                onBlur={() => handleUpdateNote(item.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Escape') {
+                                    setEditingNoteId(null);
+                                    setNoteDraft('');
+                                  }
+                                }}
+                                autoFocus
+                                className="flex-1 text-sm px-3 py-1.5 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-white dark:bg-dark text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                              />
+                              <button
+                                onClick={() => { setEditingNoteId(null); setNoteDraft(''); }}
+                                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              >
+                                取消
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              onClick={() => handleStartEditNote(item.id, item.note || '')}
+                              className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:text-primary transition-colors flex-1"
+                            >
+                              {item.note ? (
+                                <span className="leading-relaxed">{item.note}</span>
+                              ) : (
+                                <span className="text-gray-400 italic">未填写</span>
+                              )}
+                              <span className="text-xs text-gray-400 ml-1">点击修改</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

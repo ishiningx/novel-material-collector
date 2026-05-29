@@ -41,6 +41,18 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
   // Metadata panel collapse state (archived only)
   const [metaPanelOpen, setMetaPanelOpen] = useState(true);
 
+  // Title editing state
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+
+  const allGimmicks = useMemo(() => {
+    const set = new Set<string>();
+    articleState.articles.forEach((a) => {
+      (a.coreGimmick || []).forEach((g) => set.add(g));
+    });
+    return Array.from(set);
+  }, [articleState.articles]);
+
   // Compute material ranges for this article so the reader can show a dotted underline
   // on text segments that have been collected into the material library.
   const materialRanges = useMemo(() => {
@@ -116,6 +128,14 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
     setToast('已保存');
   }, []);
 
+  const handleSaveTitle = useCallback(() => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== article?.title) {
+      updateArticle({ ...article!, title: trimmed });
+    }
+    setEditingTitle(false);
+  }, [titleDraft, article, updateArticle]);
+
   // Handle archive / edit metadata
   const handleConfirmArchive = useCallback(
     async (metadata: ArticleMetadata) => {
@@ -174,9 +194,36 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
 
         <div className="w-px h-5 bg-gray-200/50 dark:bg-white/10" />
 
-        <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[300px] font-medium tracking-tight">
-          {article.title}
-        </span>
+        {editingTitle ? (
+          <input
+            type="text"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={handleSaveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveTitle();
+              if (e.key === 'Escape') setEditingTitle(false);
+            }}
+            autoFocus
+            className="text-sm px-3 py-1.5 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-white dark:bg-dark text-gray-900 dark:text-gray-100 min-w-[200px] max-w-[300px] focus:outline-none focus:ring-2 focus:ring-primary/30 font-medium"
+          />
+        ) : (
+          <div className="flex items-center gap-1.5 group/title">
+            <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[300px] font-medium tracking-tight">
+              {article.title}
+            </span>
+            <button
+              onClick={() => {
+                setEditingTitle(true);
+                setTitleDraft(article.title);
+              }}
+              className="btn-ghost-icon opacity-0 group-hover/title:opacity-100 shrink-0"
+              title="编辑标题"
+            >
+              <Edit3 size={12} />
+            </button>
+          </div>
+        )}
 
         <div className="text-xs text-gray-400 ml-2">
           {activeHighlightCount} 处高亮 · {commentCount} 条笔记
@@ -302,7 +349,9 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-gray-500 shrink-0 w-20 text-right">核心梗：</span>
-                    <span className="text-gray-700 dark:text-gray-300 flex-1 min-w-0 break-words">{article.coreGimmick || '——'}</span>
+                    <span className="text-gray-700 dark:text-gray-300 flex-1 min-w-0 break-words">
+                      {(article.coreGimmick && article.coreGimmick.length > 0) ? article.coreGimmick.join('、') : '——'}
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-gray-500 shrink-0 w-20 text-right">付费点：</span>
@@ -385,6 +434,7 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
         visible={showArchiveModal}
         article={article}
         genres={articleState.genres}
+        allGimmicks={allGimmicks}
         onConfirm={handleConfirmArchive}
         onClose={() => setShowArchiveModal(false)}
         addGenre={addGenre}

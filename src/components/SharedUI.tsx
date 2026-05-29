@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Upload, X, Library, BookOpen, CalendarCheck } from 'lucide-react';
+import { FileText, Upload, X, Library, BookOpen, CalendarCheck, PenLine, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UpdateNotification } from './UpdateNotification';
 
 // Simple toast component with auto-dismiss
@@ -90,88 +90,152 @@ export function AppLayout({
   onViewChange,
   materialCount,
   analysisCount = 0,
+  workCount = 0,
   currentVersion = '1.0.0',
+  sidebarCollapsed = false,
+  onToggleSidebar,
+  onExport,
+  onImport,
   children,
 }: {
-  currentView: 'analysis' | 'library' | 'weekly-report';
-  onViewChange: (view: 'analysis' | 'library' | 'weekly-report') => void;
+  currentView: 'analysis' | 'library' | 'weekly-report' | 'works';
+  onViewChange: (view: 'analysis' | 'library' | 'weekly-report' | 'works') => void;
   materialCount: number;
   analysisCount?: number;
+  workCount?: number;
   currentVersion?: string;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
+  onExport?: () => void;
+  onImport?: () => void;
   children: React.ReactNode;
 }) {
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+
   return (
     <div className="flex h-screen bg-surface dark:bg-dark">
-      {/* Sidebar */}
-      <aside className="w-56 glass-panel flex flex-col">
-        {/* Logo */}
-        <div className="h-16 px-5 flex items-center">
+      <aside className={`glass-panel flex flex-col shrink-0 transition-all duration-300 overflow-hidden ${sidebarCollapsed ? 'w-14' : 'w-56'}`}>
+        <div className="h-16 px-3 flex items-center justify-center">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-[10px] flex items-center justify-center overflow-hidden ring-1 ring-black/5">
+            <div className="w-8 h-8 rounded-[10px] flex items-center justify-center overflow-hidden ring-1 ring-black/5 shrink-0">
               <img src="/icon.png" alt="" className="w-full h-full object-cover" />
             </div>
-            <span className="font-semibold tracking-tight text-gray-900 dark:text-gray-100">素材收集助手</span>
+            <span className={`font-semibold tracking-tight text-gray-900 dark:text-gray-100 whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>素材收集助手</span>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-0.5">
-          <button
-            onClick={() => onViewChange('analysis')}
-            className={`nav-item w-full text-left ${
-              currentView === 'analysis'
-                ? 'nav-item-active'
-                : 'nav-item-inactive'
-            }`}
-          >
-            <BookOpen size={18} strokeWidth={1.5} />
-            <span>分析</span>
-            {analysisCount > 0 && (
-              <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
-                {analysisCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => onViewChange('library')}
-            className={`nav-item w-full text-left ${
-              currentView === 'library'
-                ? 'nav-item-active'
-                : 'nav-item-inactive'
-            }`}
-          >
-            <Library size={18} strokeWidth={1.5} />
-            <span>素材库</span>
-            {materialCount > 0 && (
-              <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
-                {materialCount}
-              </span>
-            )}
-          </button>
+        <nav className="flex-1 p-3 flex flex-col">
+          <div className="space-y-0.5">
+            <button
+              onClick={() => onViewChange('analysis')}
+              className={`nav-item w-full ${sidebarCollapsed ? 'justify-center p-0 w-9 h-9 mx-auto' : 'text-left'} ${
+                currentView === 'analysis'
+                  ? 'nav-item-active'
+                  : 'nav-item-inactive'
+              }`}
+            >
+              <BookOpen size={18} strokeWidth={1.5} />
+              <span className={`whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>分析</span>
+              {!sidebarCollapsed && analysisCount > 0 && (
+                <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
+                  {analysisCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => onViewChange('library')}
+              className={`nav-item w-full ${sidebarCollapsed ? 'justify-center p-0 w-9 h-9 mx-auto' : 'text-left'} ${
+                currentView === 'library'
+                  ? 'nav-item-active'
+                  : 'nav-item-inactive'
+              }`}
+            >
+              <Library size={18} strokeWidth={1.5} />
+              <span className={`whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>素材库</span>
+              {!sidebarCollapsed && materialCount > 0 && (
+                <span className="ml-auto bg-gray-900/10 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] px-1.5 py-0.5 rounded-full font-medium">
+                  {materialCount}
+                </span>
+              )}
+            </button>
 
-          <div className="h-px bg-gray-200/50 dark:bg-white/5 my-2.5" />
+            <button
+              onClick={() => onViewChange('weekly-report')}
+              className={`nav-item w-full ${sidebarCollapsed ? 'justify-center p-0 w-9 h-9 mx-auto' : 'text-left'} ${
+                currentView === 'weekly-report'
+                  ? 'nav-item-active'
+                  : 'nav-item-inactive'
+              }`}
+            >
+              <CalendarCheck size={18} strokeWidth={1.5} />
+              <span className={`whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>本周成果</span>
+            </button>
 
-          <button
-            onClick={() => onViewChange('weekly-report')}
-            className={`nav-item w-full text-left ${
-              currentView === 'weekly-report'
-                ? 'nav-item-active'
-                : 'nav-item-inactive'
-            }`}
-          >
-            <CalendarCheck size={18} strokeWidth={1.5} />
-            <span>本周成果</span>
-          </button>
+            <button
+              onClick={() => onViewChange('works')}
+              className={`nav-item w-full ${sidebarCollapsed ? 'justify-center p-0 w-9 h-9 mx-auto' : 'text-left'} ${
+                currentView === 'works'
+                  ? 'nav-item-active'
+                  : 'nav-item-inactive'
+              }`}
+            >
+              <PenLine size={18} strokeWidth={1.5} />
+              <span className={`whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>我的作品</span>
+            </button>
+          </div>
+
+          <div className="mt-auto space-y-0.5">
+            <button
+              onClick={onToggleSidebar}
+              className={`nav-item w-full ${sidebarCollapsed ? 'justify-center p-0 w-9 h-9 mx-auto' : 'text-left'} nav-item-inactive`}
+              title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+            >
+              {sidebarCollapsed ? <ChevronRight size={18} strokeWidth={1.5} /> : <ChevronLeft size={18} strokeWidth={1.5} />}
+              <span className={`whitespace-nowrap transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>收起侧栏</span>
+            </button>
+            {!sidebarCollapsed && onExport && onImport && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                  className={`nav-item w-full text-left ${
+                    showSettingsMenu ? 'nav-item-active' : 'nav-item-inactive'
+                  }`}
+                >
+                  <Settings size={18} strokeWidth={1.5} />
+                  <span className="whitespace-nowrap">设置</span>
+                </button>
+                {showSettingsMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowSettingsMenu(false)} />
+                    <div className="absolute left-3 right-3 bottom-full mb-1 bg-white dark:bg-dark-50 border border-gray-200 dark:border-dark-100 rounded-xl shadow-lg py-1 z-20">
+                      <button
+                        onClick={() => { onExport(); setShowSettingsMenu(false); }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-200"
+                      >
+                        备份数据
+                      </button>
+                      <button
+                        onClick={() => { onImport(); setShowSettingsMenu(false); }}
+                        className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-200"
+                      >
+                        导入备份
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200/50 dark:border-white/5">
-          <UpdateNotification currentVersion={currentVersion} />
-          <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-2">© Bonnie & Echo</p>
+        <div className="p-3 border-t border-gray-200/50 dark:border-white/5">
+          {!sidebarCollapsed && <UpdateNotification currentVersion={currentVersion} />}
+          {!sidebarCollapsed && (
+            <p className="text-xs text-gray-400 dark:text-gray-600 text-center mt-2">© Bonnie & Echo</p>
+          )}
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 flex flex-col min-w-0">
         {children}
       </main>

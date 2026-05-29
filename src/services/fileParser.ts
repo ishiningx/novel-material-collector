@@ -55,22 +55,47 @@ async function parseDocxFile(filePath: string, fileName: string): Promise<Parsed
 }
 
 function decodeBuffer(buffer: Uint8Array): string {
-  // Try UTF-8 first
-  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
-
-  // Check for GBK encoding: if UTF-8 has replacement chars, try GBK
-  if (utf8.includes('\uFFFD')) {
-    try {
-      const gbk = new TextDecoder('gbk').decode(buffer);
-      // Normalize line endings: convert all \r\n and \r to \n
-      return gbk.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    } catch {
-      return utf8;
+  // 1) Check for UTF-16 BOM (Windows "Unicode" encoding)
+  if (buffer.length >= 2) {
+    if (buffer[0] === 0xFF && buffer[1] === 0xFE) {
+      // UTF-16 LE with BOM
+      return new TextDecoder('utf-16le').decode(buffer).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+    if (buffer[0] === 0xFE && buffer[1] === 0xFF) {
+      // UTF-16 BE with BOM (rare, but handle it)
+      return new TextDecoder('utf-16be').decode(buffer).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     }
   }
 
-  // Normalize line endings: convert all \r\n and \r to \n
-  return utf8.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // 2) Try UTF-8
+  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+  const cleanUtf8 = utf8.charCodeAt(0) === 0xFEFF ? utf8.slice(1) : utf8;
+
+  if (!cleanUtf8.includes('\uFFFD')) {
+    return cleanUtf8.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  }
+
+  // 3) Try GBK (Chinese Windows ANSI encoding) — more common than UTF-16 without BOM
+  try {
+    const gbk = new TextDecoder('gbk').decode(buffer);
+    if (!gbk.includes('\uFFFD') || gbk.length > cleanUtf8.length * 0.8) {
+      return gbk.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+  } catch {
+    // fall through
+  }
+
+  // 4) Try UTF-16 without BOM (e.g. truncated files or edge cases)
+  try {
+    const utf16 = new TextDecoder('utf-16le', { fatal: false }).decode(buffer);
+    if (!utf16.includes('\uFFFD')) {
+      return utf16.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    }
+  } catch {
+    // fall through
+  }
+
+  return cleanUtf8.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
 export function getFileCharCount(text: string): number {

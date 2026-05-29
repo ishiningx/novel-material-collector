@@ -28,7 +28,7 @@ export function formatArticleAsMarkdown(article: ArticleRecord): string {
     metaLines.push(`- **分类**: ${article.categories.join(' / ')}`);
   }
   if (article.platform) metaLines.push(`- **平台**: ${article.platform}`);
-  if (article.coreGimmick) metaLines.push(`- **核心梗**: ${article.coreGimmick}`);
+  if (article.coreGimmick && article.coreGimmick.length > 0) metaLines.push(`- **核心梗**: ${article.coreGimmick.join(' / ')}`);
   if (article.payPoint) metaLines.push(`- **付费点**: ${article.payPoint}`);
   if (article.synopsis) metaLines.push(`- **梗概**: ${article.synopsis}`);
   if (article.highlight) metaLines.push(`- **亮点**: ${article.highlight}`);

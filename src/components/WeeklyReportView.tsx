@@ -158,10 +158,10 @@ export function WeeklyReportView() {
 
         {/* Content fields */}
         <div className="space-y-1.5">
-          {article.coreGimmick && (
+          {(article.coreGimmick && article.coreGimmick.length > 0) && (
             <div className="flex items-start gap-2 text-xs leading-relaxed">
               <span className="text-gray-400 dark:text-gray-500 shrink-0 w-[3.5em]">核心梗</span>
-              <span className="text-gray-700 dark:text-gray-300 min-w-0">{article.coreGimmick}</span>
+              <span className="text-gray-700 dark:text-gray-300 min-w-0">{(article.coreGimmick || []).join('、')}</span>
             </div>
           )}
           {article.payPoint && (

@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import type { ArticleMetadata, ArticleRecord } from '../types';
 import { DEFAULT_ARTICLE_GENRES } from '../types';
 
 interface ArchiveArticleModalProps {
   visible: boolean;
-  article: ArticleRecord | null; // 若是已归档的例文在重编辑，传入原值作为初始值
+  article: ArticleRecord | null;
   genres: string[];
+  allGimmicks: string[];
   onConfirm: (metadata: ArticleMetadata) => void | Promise<void>;
   onClose: () => void;
   addGenre: (name: string) => Promise<void>;
@@ -17,7 +18,7 @@ const EMPTY_META: ArticleMetadata = {
   categories: [],
   platform: '',
   author: '',
-  coreGimmick: '',
+  coreGimmick: [],
   payPoint: '',
   synopsis: '',
   highlight: '',
@@ -28,6 +29,7 @@ export function ArchiveArticleModal({
   visible,
   article,
   genres,
+  allGimmicks,
   onConfirm,
   onClose,
   addGenre,
@@ -39,6 +41,17 @@ export function ArchiveArticleModal({
   const [addingGenre, setAddingGenre] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [gimmickInput, setGimmickInput] = useState('');
+  const [showGimmickDropdown, setShowGimmickDropdown] = useState(false);
+
+  const filteredSuggestions = useMemo(() => {
+    const selected = new Set(meta.coreGimmick);
+    const candidates = allGimmicks.filter((g) => !selected.has(g));
+    if (!gimmickInput.trim()) return candidates.slice(0, 8);
+    const q = gimmickInput.toLowerCase();
+    return candidates.filter((g) => g.toLowerCase().includes(q)).slice(0, 8);
+  }, [allGimmicks, meta.coreGimmick, gimmickInput]);
+
   // Hydrate form when opened
   useEffect(() => {
     if (!visible) return;
@@ -47,7 +60,7 @@ export function ArchiveArticleModal({
         categories: article.categories || [],
         platform: article.platform || '',
         author: article.author || '',
-        coreGimmick: article.coreGimmick || '',
+        coreGimmick: article.coreGimmick || [],
         payPoint: article.payPoint || '',
         synopsis: article.synopsis || '',
         highlight: article.highlight || '',
@@ -86,9 +99,29 @@ export function ArchiveArticleModal({
     }
   };
 
+  const addGimmick = (g: string) => {
+    const trimmed = g.trim();
+    if (!trimmed || meta.coreGimmick.includes(trimmed)) return;
+    setMeta((m) => ({ ...m, coreGimmick: [...m.coreGimmick, trimmed] }));
+    setGimmickInput('');
+  };
+
+  const removeGimmick = (g: string) => {
+    setMeta((m) => ({ ...m, coreGimmick: m.coreGimmick.filter((x) => x !== g) }));
+  };
+
+  const handleGimmickKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (gimmickInput.trim()) {
+        addGimmick(gimmickInput);
+        setShowGimmickDropdown(false);
+      }
+    }
+  };
+
   const handleConfirm = async () => {
-    if (meta.categories.length === 0 && !meta.platform.trim() && !meta.coreGimmick.trim()) {
-      // 至少填一项才让归档
+    if (meta.categories.length === 0 && !meta.platform.trim() && meta.coreGimmick.length === 0) {
       return;
     }
     setSaving(true);
@@ -100,7 +133,7 @@ export function ArchiveArticleModal({
   };
 
   const canSubmit =
-    meta.categories.length > 0 || meta.platform.trim() || meta.coreGimmick.trim();
+    meta.categories.length > 0 || meta.platform.trim() || meta.coreGimmick.length > 0;
 
   return (
     <>
@@ -219,15 +252,52 @@ export function ArchiveArticleModal({
           </div>
 
           {/* Core Gimmick */}
-          <div>
+          <div className="relative">
             <label className="block text-xs text-gray-500 mb-1 font-medium">核心梗</label>
-            <input
-              type="text"
-              value={meta.coreGimmick}
-              onChange={(e) => setMeta((m) => ({ ...m, coreGimmick: e.target.value }))}
-              placeholder="一句话提炼"
-              className="w-full text-sm px-3 py-2 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-white dark:bg-dark text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400/30"
-            />
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {meta.coreGimmick.map((g) => (
+                <span key={g} className="chip chip-active flex items-center gap-1 text-xs">
+                  {g}
+                  <button
+                    onClick={() => removeGimmick(g)}
+                    className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
+                  >
+                    <X size={10} strokeWidth={2} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={gimmickInput}
+                onChange={(e) => {
+                  setGimmickInput(e.target.value);
+                  setShowGimmickDropdown(true);
+                }}
+                onFocus={() => setShowGimmickDropdown(true)}
+                onBlur={() => setTimeout(() => setShowGimmickDropdown(false), 150)}
+                onKeyDown={handleGimmickKeyDown}
+                placeholder="输入核心梗，回车添加"
+                className="w-full text-sm px-3 py-2 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-white dark:bg-dark text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400/30"
+              />
+              {showGimmickDropdown && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-dark-50 border border-gray-200 dark:border-dark-100 rounded-xl shadow-lg py-1 z-50 max-h-40 overflow-y-auto">
+                  {filteredSuggestions.map((g) => (
+                    <button
+                      key={g}
+                      onMouseDown={() => {
+                        addGimmick(g);
+                        setShowGimmickDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-200"
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Pay point */}

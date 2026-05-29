@@ -1,5 +1,5 @@
 import { BaseDirectory, readTextFile, writeTextFile, mkdir, exists } from '@tauri-apps/plugin-fs';
-import type { MaterialItem, Category, AppSettings, AnalysisRecord, ArticleRecord, WeeklyReport, EncouragementMessage } from '../types';
+import type { MaterialItem, Category, AppSettings, AnalysisRecord, ArticleRecord, WeeklyReport, EncouragementMessage, WorkRecord } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS, DEFAULT_ENCOURAGEMENT_MESSAGES, DEFAULT_ARTICLE_GENRES } from '../types';
 
 const DATA_DIR = 'novel-material-collector';
@@ -12,6 +12,7 @@ const ARTICLE_GENRES_FILE = 'article-genres.json';
 const MIGRATION_FLAG_FILE = 'migration.json';
 const WEEKLY_REPORTS_FILE = 'weekly-reports.json';
 const ENCOURAGEMENT_FILE = 'encouragement-messages.txt';
+const WORKS_FILE = 'works.json';
 
 // Ensure data directory exists
 async function ensureDataDir(): Promise<void> {
@@ -389,4 +390,26 @@ function parseEncouragementFile(content: string): EncouragementMessage[] {
   }
 
   return messages;
+}
+
+// === Works CRUD ===
+
+export async function loadWorks(): Promise<WorkRecord[]> {
+  try {
+    await ensureDataDir();
+    const content = await readTextFile(`${DATA_DIR}/${WORKS_FILE}`, { baseDir: BaseDirectory.AppData });
+    return JSON.parse(content);
+  } catch {
+    return [];
+  }
+}
+
+export async function saveWorks(works: WorkRecord[]): Promise<void> {
+  try {
+    await ensureDataDir();
+    await writeTextFile(`${DATA_DIR}/${WORKS_FILE}`, JSON.stringify(works, null, 2), { baseDir: BaseDirectory.AppData });
+  } catch (err) {
+    console.error('[Storage] saveWorks failed:', err);
+    throw err;
+  }
 }

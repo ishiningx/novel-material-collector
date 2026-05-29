@@ -110,7 +110,7 @@ interface ArticleContextValue {
   getArticlesByStatus: (status: ArticleStatus) => ArticleRecord[];
   filterArchived: (query: {
     keyword?: string;
-    coreGimmick?: string;
+    coreGimmicks?: string[];
     categories?: string[];
     platform?: string;
     dateFilter?: ArticleDateFilter;
@@ -160,7 +160,25 @@ export function ArticleProvider({ children }: { children: ReactNode }) {
         if (articlesChanged) {
           try { await saveArticles(cleanedArticles); } catch (_) { /* ignore */ }
         }
-        dispatch({ type: 'SET_ARTICLES', payload: cleanedArticles });
+        // 数据迁移：coreGimmick string → string[]
+        let gimmickChanged = false;
+        const gimmickCleaned = cleanedArticles.map((a) => {
+          const raw = (a as any).coreGimmick;
+          if (typeof raw === 'string') {
+            gimmickChanged = true;
+            return { ...a, coreGimmick: raw ? [raw] : [] };
+          }
+          if (!Array.isArray(a.coreGimmick)) {
+            gimmickChanged = true;
+            return { ...a, coreGimmick: [] };
+          }
+          return a;
+        });
+        const finalArticles = gimmickChanged ? gimmickCleaned : cleanedArticles;
+        if (gimmickChanged) {
+          try { await saveArticles(finalArticles); } catch (_) { /* ignore */ }
+        }
+        dispatch({ type: 'SET_ARTICLES', payload: finalArticles });
         // Load genres
         try {
           const genres = await loadArticleGenres();
@@ -370,27 +388,30 @@ export function ArticleProvider({ children }: { children: ReactNode }) {
 
   const filterArchived = (query: {
     keyword?: string;
-    coreGimmick?: string;
+    coreGimmicks?: string[];
     categories?: string[];
     platform?: string;
     dateFilter?: ArticleDateFilter;
     onlyClassic?: boolean;
   }): ArticleRecord[] => {
     const archived = state.articles.filter((a) => a.status === 'archived');
-    const { keyword, coreGimmick, categories, platform, dateFilter, onlyClassic } = query;
+    const { keyword, coreGimmicks, categories, platform, dateFilter, onlyClassic } = query;
 
     return archived.filter((a) => {
       if (keyword && keyword.trim()) {
         const k = keyword.toLowerCase();
         const hit =
           a.title.toLowerCase().includes(k) ||
-          (a.coreGimmick || '').toLowerCase().includes(k) ||
+          (a.coreGimmick || []).join(' ').toLowerCase().includes(k) ||
           (a.author || '').toLowerCase().includes(k);
         if (!hit) return false;
       }
-      if (coreGimmick && coreGimmick.trim()) {
-        const g = coreGimmick.toLowerCase();
-        if (!(a.coreGimmick || '').toLowerCase().includes(g)) return false;
+      if (coreGimmicks && coreGimmicks.length > 0) {
+        const articleGimmicks = a.coreGimmick || [];
+        const hit = coreGimmicks.every((g) =>
+          articleGimmicks.some((ag) => ag.toLowerCase().includes(g.toLowerCase()))
+        );
+        if (!hit) return false;
       }
       if (categories && categories.length > 0) {
         const articleCats = a.categories || [];
