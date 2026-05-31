@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { Download, Upload, Plus } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -35,6 +35,11 @@ function formatFee(n: number) {
   return n.toLocaleString();
 }
 
+function formatWords(n: number) {
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}万`;
+  return n.toLocaleString();
+}
+
 const HEADER_MAP: Record<string, string> = {
   '作品名': 'name',
   '平台': 'platform',
@@ -43,7 +48,7 @@ const HEADER_MAP: Record<string, string> = {
   '分成稿费': 'shareFee',
   '全勤稿费': 'fullAttendance',
   '发表日期': 'publishDate',
-  '备注数据': 'data',
+  '数据记录': 'data',
   '假设': 'hypothesis',
   '验证结论': 'verificationResult',
 };
@@ -51,7 +56,8 @@ const HEADER_MAP: Record<string, string> = {
 const TEMPLATE_HEADERS = Object.keys(HEADER_MAP);
 
 function downloadTemplate() {
-  const csv = '\uFEFF' + TEMPLATE_HEADERS.join(',') + '\n';
+  const exampleRow = ['【示例】作品名', '起点中文网', '100000', '5000', '2000', '1000', '2024/01/15', '', '', ''];
+  const csv = '\uFEFF' + TEMPLATE_HEADERS.join(',') + '\n' + exampleRow.join(',') + '\n';
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -66,7 +72,7 @@ function downloadTemplate() {
 function parseRows(headers: string[], rows: any[][]): any[] {
   const fieldMap: { idx: number; field: string }[] = [];
   headers.forEach((h, i) => {
-    const mapped = HEADER_MAP[h.trim()];
+    const mapped = HEADER_MAP[h.trim()] || (h.trim() === '备注数据' ? 'data' : undefined);
     if (mapped) fieldMap.push({ idx: i, field: mapped });
   });
 
@@ -84,23 +90,20 @@ function parseRows(headers: string[], rows: any[][]): any[] {
         if (val == null) return;
 
         if (field === 'wordCount') {
-          const n = Number(val);
+          const n = typeof val === 'string' ? Number(val.replace(/,/g, '')) : Number(val);
           record.wordCount = isNaN(n) ? 0 : n;
         } else if (['guaranteeFee', 'shareFee', 'fullAttendance'].includes(field)) {
-          const n = Number(val);
+          const n = typeof val === 'string' ? Number(val.replace(/,/g, '')) : Number(val);
           record[field] = isNaN(n) ? undefined : n;
         } else if (field === 'publishDate') {
           if (typeof val === 'number') {
-            // Excel serial date
             const d = new Date((val - 25569) * 86400 * 1000);
             record.publishDate = d.toISOString().split('T')[0];
           } else {
             const s = String(val).trim();
-            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-              record.publishDate = s;
-            } else if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(s)) {
-              const parts = s.split('/');
-              record.publishDate = `${parts[0]}-${String(Number(parts[1])).padStart(2, '0')}-${String(Number(parts[2])).padStart(2, '0')}`;
+            const m = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+            if (m) {
+              record.publishDate = `${m[1]}-${String(Number(m[2])).padStart(2, '0')}-${String(Number(m[3])).padStart(2, '0')}`;
             } else {
               record.publishDate = s;
             }
@@ -112,7 +115,7 @@ function parseRows(headers: string[], rows: any[][]): any[] {
 
       return record;
     })
-    .filter((r) => r.name && r.platform);
+    .filter((r) => r.name && r.platform && !r.name.startsWith('【示例】'));
 }
 
 function formInit() {
@@ -133,12 +136,20 @@ export function WorkRecordView() {
   const [page, setPage] = useState(1);
   const [selectedYears, setSelectedYears] = useState<number[]>(() => [new Date().getFullYear()]);
   const [importing, setImporting] = useState(false);
-  const [importError, setImportError] = useState('');
+  const [toast, setToast] = useState<string | null>(null);
+  const [toastError, setToastError] = useState(false);
   const [showNewRow, setShowNewRow] = useState(false);
   const [newRow, setNewRow] = useState(formInit);
   const [saving, setSaving] = useState(false);
+  const [showWords, setShowWords] = useState(false);
 
   React.useEffect(() => { setPage(1); }, [filter]);
+
+  React.useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const updateNewRow = useCallback((updater: (prev: any) => any) => {
     setNewRow((prev) => updater(prev));
@@ -217,6 +228,7 @@ export function WorkRecordView() {
       stats.forEach(({ year }) => {
         const ms = stats.find((s) => s.year === year)?.months || [];
         entry[`${year}年`] = ms[i]?.totalFee || 0;
+        entry[`${year}年字数`] = ms[i]?.totalWords || 0;
       });
       return entry;
     });
@@ -239,7 +251,7 @@ export function WorkRecordView() {
     if (!file) return;
 
     setImporting(true);
-    setImportError('');
+    setToast(null);
     try {
       const ext = file.name.toLowerCase().split('.').pop();
       let records: any[] = [];
@@ -251,27 +263,36 @@ export function WorkRecordView() {
         const buffer = await file.arrayBuffer();
         records = parseExcel(buffer);
       } else {
-        setImportError('不支持的文件格式，请使用 .csv 或 .xlsx 文件');
+        setToast('不支持的文件格式，请使用 .csv 或 .xlsx 文件');
+        setToastError(true);
         return;
       }
 
       if (records.length === 0) {
-        setImportError('未找到有效数据，请检查 CSV 表头是否与下载的模板一致');
+        setToast('未找到有效数据，请检查 CSV 表头是否与下载的模板一致');
+        setToastError(true);
         return;
       }
 
       await addWorksBatch(records);
+      setToast(`成功导入 ${records.length} 条作品记录`);
+      setToastError(false);
     } catch (err) {
       console.error('[WorkRecord] Import failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      setImportError(`导入失败：${msg}`);
+      setToast(`导入失败：${msg}`);
+      setToastError(true);
     } finally {
       setImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const hasData = state.works.length > 0;
+  const handleDownloadTemplate = () => {
+    downloadTemplate();
+    setToast('模板已下载，按示例填写日期（如 2024/01/15），稿费请填写数字');
+    setToastError(false);
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -286,7 +307,6 @@ export function WorkRecordView() {
       <div className="flex items-center justify-between px-6 pt-6 pb-1 shrink-0">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">我的作品记录</h2>
         <div className="flex items-center gap-3">
-          {importError && <span className="text-xs text-red-400">{importError}</span>}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={importing}
@@ -296,7 +316,7 @@ export function WorkRecordView() {
             {importing ? '导入中...' : '导入历史数据'}
           </button>
           <button
-            onClick={downloadTemplate}
+            onClick={handleDownloadTemplate}
             className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <Download size={15} />
@@ -308,31 +328,51 @@ export function WorkRecordView() {
       <div className="px-6 pb-4 shrink-0">
         <div className="bg-white dark:bg-dark-50 rounded-[14px] p-4 ring-1 ring-inset ring-gray-200/60 dark:ring-dark-100/60">
           <div className="flex items-center gap-2 mb-3">
-            {availableYears.map((year, i) => (
-              <button
-                key={year}
-                onClick={() => toggleYear(year)}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full transition-colors border"
-                style={{
-                  backgroundColor: chartYears.includes(year) ? YEAR_COLORS[i % YEAR_COLORS.length] + '16' : undefined,
-                  color: chartYears.includes(year) ? YEAR_COLORS[i % YEAR_COLORS.length] : undefined,
-                  borderColor: chartYears.includes(year) ? YEAR_COLORS[i % YEAR_COLORS.length] : 'rgb(229,231,235)',
-                }}
-              >
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: YEAR_COLORS[i % YEAR_COLORS.length] }}
-                />
-                {year}年
-              </button>
-            ))}
+            {availableYears.map((year) => {
+              const ci = availableYears.indexOf(year) % YEAR_COLORS.length;
+              const isSelected = chartYears.includes(year);
+              return (
+                <button
+                  key={year}
+                  onClick={() => toggleYear(year)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full transition-colors border"
+                  style={{
+                    backgroundColor: isSelected ? YEAR_COLORS[ci] + '16' : undefined,
+                    color: isSelected ? YEAR_COLORS[ci] : undefined,
+                    borderColor: isSelected ? YEAR_COLORS[ci] : 'rgb(229,231,235)',
+                  }}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: YEAR_COLORS[ci] }}
+                  />
+                  {year}年
+                </button>
+              );
+            })}
+            <label className="flex items-center gap-1.5 ml-auto text-xs text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showWords}
+                onChange={(e) => setShowWords(e.target.checked)}
+                className="rounded"
+              />
+              展示字数
+            </label>
           </div>
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={chartData}>
+            <ComposedChart data={chartData}>
               <XAxis dataKey="month" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v === 0 ? '0' : formatFee(v)} />
+              <YAxis yAxisId="fee" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v === 0 ? '0' : formatFee(v)} />
+              {showWords && <YAxis yAxisId="words" orientation="right" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => v === 0 ? '0' : formatWords(v)} />}
               <Tooltip
-                formatter={((value: any, name: any) => [`¥${formatFee(Number(value) || 0)}`, String(name || '')]) as any}
+                formatter={((value: any, name: any) => {
+                  const label = String(name || '');
+                  if (label.endsWith('字数')) {
+                    return [`${formatWords(Number(value) || 0)}字`, label.replace('字数', '')];
+                  }
+                  return [`¥${formatFee(Number(value) || 0)}`, label];
+                }) as any}
                 contentStyle={{
                   borderRadius: '12px',
                   border: 'none',
@@ -340,18 +380,33 @@ export function WorkRecordView() {
                   fontSize: '12px',
                 }}
               />
-              {chartYears.map((year, i) => (
-                <Line
-                  key={year}
-                  type="monotone"
-                  dataKey={`${year}年`}
-                  stroke={YEAR_COLORS[i % YEAR_COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 2 }}
-                  activeDot={{ r: 4 }}
-                />
-              ))}
-            </LineChart>
+              {chartYears.map((year) => {
+                const ci = availableYears.indexOf(year) % YEAR_COLORS.length;
+                return (
+                  <React.Fragment key={year}>
+                    {showWords && (
+                      <Bar
+                        dataKey={`${year}年字数`}
+                        yAxisId="words"
+                        fill={YEAR_COLORS[ci]}
+                        fillOpacity={0.25}
+                        stroke="none"
+                      />
+                    )}
+                    <Line
+                      type="monotone"
+                      dataKey={`${year}年`}
+                      yAxisId="fee"
+                      stroke={YEAR_COLORS[ci]}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                      connectNulls
+                    />
+                  </React.Fragment>
+                );
+              })}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -373,28 +428,24 @@ export function WorkRecordView() {
               </button>
             ))}
           </div>
-          {hasData && (
-            <button
-              onClick={() => {
-                setShowNewRow(true);
-                setNewRow(formInit());
-              }}
-              className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            >
-              <Plus size={15} />
-              新增作品
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setShowNewRow(true);
+              setNewRow(formInit());
+            }}
+            className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <Plus size={15} />
+            新增作品
+          </button>
         </div>
       </div>
 
-      {hasData && (
-        <div className="shrink-0 px-6 pb-3 text-xs text-gray-500 dark:text-gray-400">
-          {filter === 'all' ? '全部' : filter === 'week' ? '本周' : filter === 'month' ? '本月' : '本年'}作品 {stats.count} 篇，总字数 {stats.words.toLocaleString()}，总稿费 ¥{stats.fee.toLocaleString()}
-        </div>
-      )}
+      <div className="shrink-0 px-6 pb-3 text-xs text-gray-500 dark:text-gray-400">
+        {filter === 'all' ? '全部' : filter === 'week' ? '本周' : filter === 'month' ? '本月' : '本年'}作品 {stats.count} 篇，总字数 {stats.words.toLocaleString()}，总稿费 ¥{stats.fee.toLocaleString()}
+      </div>
 
-      <div className="flex-1 overflow-auto px-6 pb-4">
+      <div className="flex-1 px-6 pb-4 overflow-hidden">
         <WorkRecordTable
           works={displayWorks}
           showNewRow={showNewRow}
@@ -410,6 +461,19 @@ export function WorkRecordView() {
           onPageChange={setPage}
         />
       </div>
+
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 animate-toast-in ${
+            toastError ? 'bg-red-500' : 'bg-emerald-500'
+          } text-white px-4 py-2.5 rounded-[14px] shadow-lg flex items-center gap-2 text-sm`}
+        >
+          <span>{toast}</span>
+          <button onClick={() => setToast(null)} className="hover:bg-white/20 rounded p-0.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

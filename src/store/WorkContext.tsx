@@ -47,7 +47,7 @@ interface WorkContextValue {
   updateWork: (work: WorkRecord) => Promise<void>;
   deleteWork: (id: string) => Promise<void>;
   refreshWorks: () => Promise<void>;
-  getMonthlyStats: (years: number[]) => { year: number; months: { month: number; totalFee: number }[] }[];
+  getMonthlyStats: (years: number[]) => { year: number; months: { month: number; totalFee: number; totalWords: number }[] }[];
   getYearTotal: (year: number) => number;
   getCurrentMonthTotal: () => number;
 }
@@ -117,18 +117,20 @@ export function WorkProvider({ children }: { children: ReactNode }) {
   };
 
   const getMonthlyStats = (years: number[]) => {
-    const result: { year: number; months: { month: number; totalFee: number }[] }[] = [];
+    const result: { year: number; months: { month: number; totalFee: number; totalWords: number }[] }[] = [];
     for (const year of years) {
-      const months: { month: number; totalFee: number }[] = [];
+      const months: { month: number; totalFee: number; totalWords: number }[] = [];
       for (let m = 1; m <= 12; m++) {
         let totalFee = 0;
+        let totalWords = 0;
         state.works.forEach((w) => {
           const d = new Date(w.publishDate);
           if (d.getFullYear() === year && d.getMonth() + 1 === m) {
             totalFee += w.totalFee;
+            totalWords += w.wordCount;
           }
         });
-        months.push({ month: m, totalFee });
+        months.push({ month: m, totalFee, totalWords });
       }
       result.push({ year, months });
     }

@@ -1,6 +1,6 @@
 {
-  "version": "1.1.8",
-  "releaseDate": "2026-05-29",
-  "releaseNotes": "表格重写为 CSS Grid，固定列宽+横向滚动；行悬停、首列 sticky、新增行样式统一；筛选+分页控件；Windows 路径分隔符兼容（split(/[/\\\\]/)）；Windows 文本编码增强（UTF-16 BOM、GBK 回退、CRLF 归一化）；核心梗改为多标签筛选+展开收起；侧边栏分割线移除；备份导入新增合并模式，支持覆盖/合并两种方式；导入后自动刷新上下文无需重启",
+  "version": "1.1.9",
+  "releaseDate": "2026-05-31",
+  "releaseNotes": "图表年份颜色固定，不再随选中年份变化；图表 tooltip 修复多余「年」字；表格粘性表头修复（滚动时表头固定）；内容超长列截断+ hover 显示完整内容；空作品状态表头高度异常修复；模板「备注数据」统一为「数据记录」，旧文件兼容导入；模板日期格式与 toast 提示一致（斜杠分隔）",
   "downloadPageUrl": "https://gitee.com/ishiningx/novel-material-collector/releases"
 }

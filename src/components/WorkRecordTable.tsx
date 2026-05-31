@@ -43,7 +43,7 @@ function getTdClass(col: ColumnDef, isName = false): string {
   if (col.align === 'right') parts.push('text-right');
   if (col.isTotalFee || col.type === 'number') parts.push('tabular-nums');
   if (col.breakWords) parts.push('break-words');
-  if (col.nowrap) parts.push('whitespace-nowrap');
+  if (col.nowrap) parts.push('truncate');
   if (isName) {
     parts.push('text-gray-800 dark:text-gray-100');
   } else {
@@ -62,7 +62,14 @@ function displayValue(work: WorkRecord, col: ColumnDef): string {
   if (col.isTotalFee) return work.totalFee.toLocaleString();
   const val = (work as any)[col.key];
   if (col.type === 'number') return val != null ? Number(val).toLocaleString() : '';
-  if (col.type === 'date') return val ?? '';
+  if (col.type === 'date') {
+    if (!val) return '';
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    return val;
+  }
   return val ?? '';
 }
 
@@ -86,9 +93,11 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
   const [editBuffer, setEditBuffer] = useState('');
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
 
-  const handleCellEdit = useCallback((work: WorkRecord, field: string, currentValue: any) => {
+  const handleCellEdit = useCallback((work: WorkRecord, field: string, _currentValue: any) => {
     setEditingCell({ rowId: work.id, field });
-    setEditBuffer(String(currentValue ?? ''));
+    const col = COLUMNS.find(c => c.key === field);
+    const formatted = col ? displayValue(work, col) : String(_currentValue ?? '');
+    setEditBuffer(formatted);
   }, []);
 
   const handleCellSave = useCallback(async (work: WorkRecord) => {
@@ -123,16 +132,24 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
   }, []);
 
   return (
-    <div className="bg-white dark:bg-dark-50 rounded-lg shadow-sm border border-gray-200/50 dark:border-dark-100/50 overflow-hidden">
+    <div className="bg-white dark:bg-dark-50 rounded-lg shadow-sm border border-gray-200/50 dark:border-dark-100/50 overflow-hidden h-full flex flex-col">
       <div
-        className="grid overflow-auto"
+        className="grid overflow-auto flex-1 min-h-0 content-start"
         style={{ gridTemplateColumns: COL_WIDTHS }}
+        onMouseOver={(e) => {
+          const cell = (e.target as HTMLElement).closest('[data-row-id]');
+          if (cell) {
+            const rowId = cell.getAttribute('data-row-id');
+            if (rowId) setHoveredRowId(rowId);
+          }
+        }}
+        onMouseLeave={() => setHoveredRowId(null)}
       >
         {/* Header row */}
         {COLUMNS.map((col) => (
           <div
             key={`h-${col.key}`}
-            className={`${getThClass(col)} bg-[#f7f7f5] dark:bg-dark-200/30 text-gray-700 dark:text-gray-300 ${col.key === 'name' ? 'sticky left-0 z-20' : ''}`}
+            className={`${getThClass(col)} bg-[#f7f7f5] dark:bg-dark-200/30 text-gray-700 dark:text-gray-300 sticky top-0 z-20 ${col.key === 'name' ? 'sticky left-0' : ''}`}
           >
             {col.hideHeader ? '' : col.label}
           </div>
@@ -208,25 +225,23 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
         )}
 
         {/* Data rows */}
-        {works.map((work) => {
+        {works.length === 0 && !showNewRow ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mb-3 opacity-40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <span className="text-sm">还没有作品记录，点击右上角「新增作品」开始添加</span>
+          </div>
+        ) : (works.map((work) => {
           const isHovered = hoveredRowId === work.id;
           const rowBg = isHovered ? ROW_HOVER_BG : '';
           return (
           <div
             key={work.id}
             className="contents"
-            onMouseOver={() => setHoveredRowId(work.id)}
-            onMouseOut={(e) => {
-              const related = e.relatedTarget as Node | null;
-              if (!related || !e.currentTarget.contains(related)) {
-                setHoveredRowId(null);
-              }
-            }}
           >
             {COLUMNS.map((col) => {
               if (col.isDelete) {
                 return (
-                  <div key={`d-${work.id}-${col.key}`} className={`px-4 py-2 transition-colors ${rowBg}`}>
+                  <div key={`d-${work.id}-${col.key}`} data-row-id={work.id} className={`px-4 py-2 transition-colors ${rowBg}`}>
                     <button
                       onClick={() => handleDelete(work.id)}
                       className={`transition-opacity text-gray-300 hover:text-red-500 dark:hover:text-red-400 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
@@ -238,9 +253,10 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
               }
 
               if (col.isTotalFee) {
+                const feeDisplay = work.totalFee.toLocaleString();
                 return (
-                  <div key={`d-${work.id}-${col.key}`} className={`${getTdClass(col)} transition-colors ${rowBg}`}>
-                    {work.totalFee.toLocaleString()}
+                  <div key={`d-${work.id}-${col.key}`} data-row-id={work.id} className={`${getTdClass(col)} transition-colors ${rowBg}`} title={col.nowrap ? feeDisplay : undefined}>
+                    {feeDisplay}
                   </div>
                 );
               }
@@ -252,7 +268,7 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
               if (isEditing) {
                 const isName = col.key === 'name';
                 return (
-                  <div key={`d-${work.id}-${col.key}`} className={`${getTdClass(col)} transition-colors ${isName ? (isHovered ? ROW_HOVER_BG : 'bg-white dark:bg-dark-50 sticky left-0 z-10') : rowBg}`}>
+                  <div key={`d-${work.id}-${col.key}`} data-row-id={work.id} className={`${getTdClass(col)} transition-colors ${isName ? (isHovered ? ROW_HOVER_BG : 'bg-white dark:bg-dark-50 sticky left-0 z-10') : rowBg}`}>
                     <input
                       value={editBuffer}
                       onChange={(e) => setEditBuffer(e.target.value)}
@@ -270,8 +286,10 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
               return (
                 <div
                   key={`d-${work.id}-${col.key}`}
+                  data-row-id={work.id}
                   onClick={() => handleCellEdit(work, col.key, rawValue)}
                   className={`${getTdClass(col, isName)} transition-colors ${isName ? (isHovered ? ROW_HOVER_BG : 'bg-white dark:bg-dark-50') : rowBg} cursor-text ${isName ? 'sticky left-0 z-10' : ''}`}
+                  title={col.nowrap ? display : undefined}
                 >
                   <span className={`${col.breakWords ? 'break-words' : ''}`}>
                     {display}
@@ -281,7 +299,7 @@ export function WorkRecordTable({ works, showNewRow, newRow, saving, onNewRowCha
             })}
           </div>
           );
-        })}
+        }))}
       </div>
 
       {/* Pagination */}
