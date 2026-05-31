@@ -24,3 +24,12 @@ npm-debug.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Document drafts
+小红书发布文案.md
+发布指南.md
+使用说明.md
+打包发布说明.md
+convert_csv.mjs
+test_backup_for_windows.json
+*.csv
