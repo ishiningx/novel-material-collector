@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Download, Upload, Plus } from 'lucide-react';
+import { Download, Upload, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import type { WorkRecord } from '../types';
 import { useWorkContext } from '../store/WorkContext';
@@ -142,8 +142,10 @@ export function WorkRecordView() {
   const [newRow, setNewRow] = useState(formInit);
   const [saving, setSaving] = useState(false);
   const [showWords, setShowWords] = useState(false);
+  const [chartCollapsed, setChartCollapsed] = useState(false);
+  const [ymFilter, setYmFilter] = useState<{ year: number; month: number } | null>(null);
 
-  React.useEffect(() => { setPage(1); }, [filter]);
+  React.useEffect(() => { setPage(1); }, [filter, ymFilter]);
 
   React.useEffect(() => {
     if (!toast) return;
@@ -179,10 +181,17 @@ export function WorkRecordView() {
   const filterStart = useMemo(() => getFilterStart(filter), [filter]);
 
   const filteredWorks = useMemo(() => {
-    return state.works
-      .filter((w) => new Date(w.publishDate) >= filterStart)
-      .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
-  }, [state.works, filterStart]);
+    let works = state.works;
+    if (ymFilter) {
+      works = works.filter((w) => {
+        const d = new Date(w.publishDate);
+        return d.getFullYear() === ymFilter.year && d.getMonth() + 1 === ymFilter.month;
+      });
+    } else {
+      works = works.filter((w) => new Date(w.publishDate) >= filterStart);
+    }
+    return [...works].sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
+  }, [state.works, filterStart, ymFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredWorks.length / PAGE_SIZE));
 
@@ -327,6 +336,18 @@ export function WorkRecordView() {
 
       <div className="px-6 pb-4 shrink-0">
         <div className="bg-white dark:bg-dark-50 rounded-[14px] p-4 ring-1 ring-inset ring-gray-200/60 dark:ring-dark-100/60">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">稿费图表</span>
+            <button
+              onClick={() => setChartCollapsed(!chartCollapsed)}
+              className="flex items-center gap-0.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              {chartCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+              {chartCollapsed ? '展开图表' : '收起图表'}
+            </button>
+          </div>
+          {!chartCollapsed && (
+          <>
           <div className="flex items-center gap-2 mb-3">
             {availableYears.map((year) => {
               const ci = availableYears.indexOf(year) % YEAR_COLORS.length;
@@ -408,6 +429,8 @@ export function WorkRecordView() {
               })}
             </ComposedChart>
           </ResponsiveContainer>
+          </>
+          )}
         </div>
       </div>
 
@@ -417,7 +440,10 @@ export function WorkRecordView() {
             {(['all', 'week', 'month', 'year'] as FilterType[]).map((type) => (
               <button
                 key={type}
-                onClick={() => setFilter(type)}
+                onClick={() => {
+                  setFilter(type);
+                  setYmFilter(null);
+                }}
                 className={`px-3 py-1 text-xs rounded-full transition-colors ${
                   filter === type
                     ? 'bg-gray-200 dark:bg-dark-100 text-gray-700 dark:text-gray-300'
@@ -427,6 +453,48 @@ export function WorkRecordView() {
                 {type === 'all' ? '全部' : type === 'week' ? '本周' : type === 'month' ? '本月' : '本年'}
               </button>
             ))}
+            {/* 自定义年月筛选：选择年、月后仅展示该月份的作品 */}
+            <div className="flex items-center gap-1 ml-2">
+              <select
+                value={ymFilter ? ymFilter.year : ''}
+                onChange={(e) => {
+                  const year = Number(e.target.value);
+                  if (!year) { setYmFilter(null); return; }
+                  setYmFilter((prev) => ({ year, month: prev?.month ?? 1 }));
+                  setFilter('all');
+                }}
+                className="px-2 py-1 text-xs rounded-full border border-gray-200 dark:border-dark-100 bg-white dark:bg-dark text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">年</option>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}年</option>
+                ))}
+              </select>
+              <select
+                value={ymFilter ? ymFilter.month : ''}
+                onChange={(e) => {
+                  const month = Number(e.target.value);
+                  if (!month) { setYmFilter(null); return; }
+                  setYmFilter((prev) => ({ year: prev?.year ?? new Date().getFullYear(), month }));
+                  setFilter('all');
+                }}
+                className="px-2 py-1 text-xs rounded-full border border-gray-200 dark:border-dark-100 bg-white dark:bg-dark text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                <option value="">月</option>
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              {ymFilter && (
+                <button
+                  onClick={() => setYmFilter(null)}
+                  className="px-1.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  title="清除年月筛选"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
           <button
             onClick={() => {
@@ -442,7 +510,10 @@ export function WorkRecordView() {
       </div>
 
       <div className="shrink-0 px-6 pb-3 text-xs text-gray-500 dark:text-gray-400">
-        {filter === 'all' ? '全部' : filter === 'week' ? '本周' : filter === 'month' ? '本月' : '本年'}作品 {stats.count} 篇，总字数 {stats.words.toLocaleString()}，总稿费 ¥{stats.fee.toLocaleString()}
+        {ymFilter
+          ? `${ymFilter.year}年${ymFilter.month}月`
+          : filter === 'all' ? '全部' : filter === 'week' ? '本周' : filter === 'month' ? '本月' : '本年'}
+        作品 {stats.count} 篇，总字数 {stats.words.toLocaleString()}，总稿费 ¥{stats.fee.toLocaleString()}
       </div>
 
       <div className="flex-1 px-6 pb-4 overflow-hidden">

@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Upload, X, Library, BookOpen, CalendarCheck, PenLine, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Upload, X, Library, BookOpen, CalendarCheck, PenLine, Settings, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { UpdateNotification } from './UpdateNotification';
+import { useSettingsContext } from '../store/SettingsContext';
+import type { SkinId } from '../types';
+
+// 皮肤选项
+const SKIN_OPTIONS: { id: SkinId; name: string }[] = [
+  { id: 'default', name: '简版' },
+  { id: 'forest', name: '森之呼吸' },
+  { id: 'cat', name: '喵呜午后' },
+];
 
 // Simple toast component with auto-dismiss
 export function Toast({ message, onClose, duration = 5000 }: { message: string; onClose: () => void; duration?: number }) {
@@ -111,6 +120,7 @@ export function AppLayout({
   children: React.ReactNode;
 }) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const { settings, updateSettings } = useSettingsContext();
 
   return (
     <div className="flex h-screen bg-surface dark:bg-dark">
@@ -208,6 +218,27 @@ export function AppLayout({
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowSettingsMenu(false)} />
                     <div className="absolute left-3 right-3 bottom-full mb-1 bg-white dark:bg-dark-50 border border-gray-200 dark:border-dark-100 rounded-xl shadow-lg py-1 z-20">
+                      {/* 皮肤选择 */}
+                      <div className="px-3 pt-2 pb-1.5 border-b border-gray-100 dark:border-dark-100">
+                        <p className="text-[11px] tracking-wide uppercase text-gray-400 dark:text-gray-500 font-medium mb-1.5">皮肤</p>
+                        <div className="flex flex-col gap-0.5">
+                          {SKIN_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => updateSettings({ skin: opt.id })}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
+                                settings.skin === opt.id
+                                  ? 'bg-primary/10 text-gray-900 dark:text-gray-100'
+                                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200'
+                              }`}
+                              title={opt.id === 'default' ? '简版青蓝主题' : opt.id === 'forest' ? '夏日窗纱绿意' : '奶油暖橙猫系'}
+                            >
+                              <span className="flex-1 text-left">{opt.name}</span>
+                              {settings.skin === opt.id && <Check size={13} className="text-primary" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <button
                         onClick={() => { onExport(); setShowSettingsMenu(false); }}
                         className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-200"

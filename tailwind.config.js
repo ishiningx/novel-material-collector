@@ -1,14 +1,18 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  // class 模式：深色跟随由 SettingsContext 在 documentElement 上管理（皮肤模式下强制浅色，不加 dark）
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
         sans: ['"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'sans-serif'],
       },
       colors: {
+        // DEFAULT 档由皮肤 CSS 变量驱动（--skin-accent / --skin-bg-main 为逗号分隔 RGB 三元组），
+        // 支持 primary/5、ring-primary/30 等透明度用法；其余档位保持静态色板
         primary: {
-          DEFAULT: '#2C5F6E',
+          DEFAULT: 'rgb(var(--skin-accent) / <alpha-value>)',
           50: '#E8F4F7',
           100: '#D1E9EF',
           200: '#A3D3DF',
@@ -21,7 +25,7 @@ export default {
           900: '#091215',
         },
         surface: {
-          DEFAULT: '#F8FAFC',
+          DEFAULT: 'rgb(var(--skin-bg-main) / <alpha-value>)',
           50: '#FFFFFF',
           100: '#F1F5F9',
           200: '#E2E8F0',

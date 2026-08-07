@@ -18,6 +18,10 @@ export interface Category {
   createdAt: string;
 }
 
+// 皮肤方案：default = 简版（青蓝），forest = 森之呼吸，cat = 喵呜午后
+// 皮肤模式强制浅色显示（深色系统下亦显示皮肤），CSS 变量体系见 globals.css
+export type SkinId = 'default' | 'forest' | 'cat';
+
 // Application settings
 export interface AppSettings {
   fontFamily: string;
@@ -25,6 +29,7 @@ export interface AppSettings {
   lastOpenedFile: string | null;
   theme: 'light' | 'dark' | 'system';
   sidebarCollapsed: boolean;
+  skin: SkinId;
 }
 
 // Default categories
@@ -45,9 +50,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastOpenedFile: null,
   theme: 'system',
   sidebarCollapsed: false,
+  skin: 'default',
 };
 
 // Available fonts for macOS
+// 皮肤推荐字体：Source Han Serif SC（思源宋体）、ZCOOL KuaiLe（站酷快乐体）
+// 需用户本地安装后生效，未安装时系统自动回落默认字体
 export const AVAILABLE_FONTS = [
   'PingFang SC',
   'Songti SC',
@@ -56,6 +64,8 @@ export const AVAILABLE_FONTS = [
   'STSong',
   'STKaiti',
   'STHeiti',
+  'Source Han Serif SC',
+  'ZCOOL KuaiLe',
   'Microsoft YaHei',
   'SimSun',
   'KaiTi',
@@ -70,47 +80,49 @@ export const FONT_SIZES = [12, 14, 16, 18, 20, 22, 24, 28, 32];
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange' | 'purple';
 
 // Color mapping for highlights and comments
+// 类名指向 globals.css 中的 CSS 变量类（--hl-*-bg/text/border/dot），
+// 由皮肤变量体系驱动：默认值对齐原 Tailwind 色板，皮肤下由 [data-skin] 覆盖
 export const HIGHLIGHT_COLOR_MAP: Record<HighlightColor, { bg: string; text: string; border: string }> = {
   yellow: {
-    bg: 'bg-yellow-200/60 dark:bg-yellow-500/20',
-    text: 'text-yellow-700 dark:text-yellow-400',
-    border: 'border-yellow-400',
+    bg: 'hl-bg-yellow',
+    text: 'hl-text-yellow',
+    border: 'hl-border-yellow',
   },
   green: {
-    bg: 'bg-green-200/60 dark:bg-green-500/20',
-    text: 'text-green-700 dark:text-green-400',
-    border: 'border-green-400',
+    bg: 'hl-bg-green',
+    text: 'hl-text-green',
+    border: 'hl-border-green',
   },
   blue: {
-    bg: 'bg-blue-200/60 dark:bg-blue-500/20',
-    text: 'text-blue-700 dark:text-blue-400',
-    border: 'border-blue-400',
+    bg: 'hl-bg-blue',
+    text: 'hl-text-blue',
+    border: 'hl-border-blue',
   },
   pink: {
-    bg: 'bg-pink-200/60 dark:bg-pink-500/20',
-    text: 'text-pink-700 dark:text-pink-400',
-    border: 'border-pink-400',
+    bg: 'hl-bg-pink',
+    text: 'hl-text-pink',
+    border: 'hl-border-pink',
   },
   orange: {
-    bg: 'bg-orange-200/60 dark:bg-orange-500/20',
-    text: 'text-orange-700 dark:text-orange-400',
-    border: 'border-orange-400',
+    bg: 'hl-bg-orange',
+    text: 'hl-text-orange',
+    border: 'hl-border-orange',
   },
   purple: {
-    bg: 'bg-purple-200/60 dark:bg-purple-500/20',
-    text: 'text-purple-700 dark:text-purple-400',
-    border: 'border-purple-400',
+    bg: 'hl-bg-purple',
+    text: 'hl-text-purple',
+    border: 'hl-border-purple',
   },
 };
 
 // Highlight color circle display colors
 export const HIGHLIGHT_COLOR_CIRCLE: Record<HighlightColor, string> = {
-  yellow: 'bg-yellow-400',
-  green: 'bg-green-400',
-  blue: 'bg-blue-400',
-  pink: 'bg-pink-400',
-  orange: 'bg-orange-400',
-  purple: 'bg-purple-400',
+  yellow: 'hl-dot-yellow',
+  green: 'hl-dot-green',
+  blue: 'hl-dot-blue',
+  pink: 'hl-dot-pink',
+  orange: 'hl-dot-orange',
+  purple: 'hl-dot-purple',
 };
 
 // Highlight data
@@ -165,6 +177,8 @@ export interface ArticleRecord {
   highlight?: string;
   isClassic?: boolean;
   archivedAt?: string;
+  // 长篇小说模式阅读进度（> 5 万字时启用分页，记录当前页码，0 起）
+  lastReadPage?: number;
 }
 
 // 例文元数据补充入参（archiveArticle 方法使用）

@@ -28,6 +28,8 @@ interface ArticleState {
   hasUnsavedChanges: boolean;
   migratedCount: number; // 本次启动从旧数据迁移的数量（0 表示没有迁移）
   genres: string[]; // 例文题材分类
+  // 素材库“返回原文”定位目标：进入详情页后滚动到该 offset 并闪烁提示
+  readerTarget: { offset: number } | null;
 }
 
 // Actions
@@ -40,7 +42,8 @@ type ArticleAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_UNSAVED'; payload: boolean }
   | { type: 'SET_MIGRATED_COUNT'; payload: number }
-  | { type: 'SET_GENRES'; payload: string[] };
+  | { type: 'SET_GENRES'; payload: string[] }
+  | { type: 'SET_READER_TARGET'; payload: { offset: number } | null };
 
 const initialState: ArticleState = {
   articles: [],
@@ -49,6 +52,7 @@ const initialState: ArticleState = {
   hasUnsavedChanges: false,
   migratedCount: 0,
   genres: [],
+  readerTarget: null,
 };
 
 function articleReducer(state: ArticleState, action: ArticleAction): ArticleState {
@@ -80,6 +84,8 @@ function articleReducer(state: ArticleState, action: ArticleAction): ArticleStat
       return { ...state, migratedCount: action.payload };
     case 'SET_GENRES':
       return { ...state, genres: action.payload };
+    case 'SET_READER_TARGET':
+      return { ...state, readerTarget: action.payload };
     default:
       return state;
   }
@@ -88,6 +94,8 @@ function articleReducer(state: ArticleState, action: ArticleAction): ArticleStat
 // Context value
 interface ArticleContextValue {
   state: ArticleState;
+  // 素材库“返回原文”定位目标（顶层透出，供编辑器消费）
+  readerTarget: ArticleState['readerTarget'];
   // CRUD
   addArticle: (title: string, content: string) => Promise<ArticleRecord>;
   updateArticle: (article: ArticleRecord) => Promise<void>;
@@ -106,6 +114,11 @@ interface ArticleContextValue {
   markUnsaved: () => void;
   getCurrentArticle: () => ArticleRecord | undefined;
   refreshArticles: () => Promise<void>;
+  // 素材库“返回原文”定位
+  setReaderTarget: (offset: number) => void;
+  clearReaderTarget: () => void;
+  // 长篇小说阅读进度（不更新 updatedAt）
+  updateReadingProgress: (articleId: string, page: number) => Promise<void>;
   // Query helpers
   getArticlesByStatus: (status: ArticleStatus) => ArticleRecord[];
   filterArchived: (query: {
@@ -373,6 +386,24 @@ export function ArticleProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_CURRENT_ARTICLE', payload: id });
   };
 
+  const setReaderTarget = (offset: number) => {
+    dispatch({ type: 'SET_READER_TARGET', payload: { offset } });
+  };
+
+  const clearReaderTarget = () => {
+    dispatch({ type: 'SET_READER_TARGET', payload: null });
+  };
+
+  // 仅更新阅读页码，不触碰 updatedAt（避免污染“最近更新”排序）
+  const updateReadingProgress = async (articleId: string, page: number) => {
+    const article = state.articles.find((a) => a.id === articleId);
+    if (!article || article.lastReadPage === page) return;
+    const updated: ArticleRecord = { ...article, lastReadPage: page };
+    const newArticles = state.articles.map((a) => (a.id === articleId ? updated : a));
+    await saveArticles(newArticles);
+    dispatch({ type: 'UPDATE_ARTICLE', payload: updated });
+  };
+
   const markUnsaved = () => {
     dispatch({ type: 'SET_UNSAVED', payload: true });
   };
@@ -455,6 +486,7 @@ export function ArticleProvider({ children }: { children: ReactNode }) {
     <ArticleContext.Provider
       value={{
         state,
+        readerTarget: state.readerTarget,
         addArticle,
         updateArticle,
         deleteArticle,
@@ -469,6 +501,9 @@ export function ArticleProvider({ children }: { children: ReactNode }) {
         markUnsaved,
         getCurrentArticle,
         refreshArticles,
+        setReaderTarget,
+        clearReaderTarget,
+        updateReadingProgress,
         getArticlesByStatus,
         filterArchived,
         addGenre,

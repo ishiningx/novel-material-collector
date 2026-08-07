@@ -68,8 +68,10 @@ export function CommentPanel({
         className={`absolute left-2 right-2 rounded-lg border-l-[3px] ${colorMap.border} bg-white dark:bg-dark-50 p-3 shadow-sm border-t border-r border-b border-gray-100 dark:border-dark-100 ${isInactive ? 'opacity-60' : ''}`}
         style={{ top: ac.actualTop }}
       >
+        {/* 皮肤徽章（喵系 cat3 小 icon，替换原 MessageSquare 图标） */}
         <div className="flex items-start gap-2">
-          <MessageSquare size={12} className={`${colorMap.text} mt-0.5 shrink-0`} />
+          <MessageSquare size={12} className={`${colorMap.text} mt-0.5 shrink-0 skin-comment-msgicon`} />
+          <span className="skin-comment-cat3-icon" aria-hidden />
           <div className="flex-1 min-w-0">
             {isInactive && (
               <span className="text-xs text-gray-400 dark:text-gray-600 mb-1 block">
@@ -111,7 +113,10 @@ export function CommentPanel({
   // Empty state
   if (comments.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-dark border-l border-gray-200 dark:border-dark-100">
+      <div className="h-full relative flex items-center justify-center bg-gray-50 dark:bg-dark border-l border-gray-200 dark:border-dark-100">
+        {/* 皮肤底部装饰（footer 底纹 / 贴底猫），评论内容会盖在它们上层 */}
+        <div className="skin-comment-footer" aria-hidden />
+        <div className="skin-comment-cat" aria-hidden />
         <div className="text-center">
           <MessageSquare size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-sm text-gray-400 dark:text-gray-600">选中文字后高亮</p>
@@ -122,7 +127,10 @@ export function CommentPanel({
   }
 
   return (
-    <div className="h-full overflow-hidden bg-gray-50 dark:bg-dark border-l border-gray-200 dark:border-dark-100">
+    <div className="h-full relative overflow-hidden bg-gray-50 dark:bg-dark border-l border-gray-200 dark:border-dark-100">
+      {/* 皮肤底部装饰（footer 底纹 / 贴底猫），评论内容会盖在它们上层 */}
+      <div className="skin-comment-footer" aria-hidden />
+      <div className="skin-comment-cat" aria-hidden />
       <div
         className="relative px-1"
         style={{

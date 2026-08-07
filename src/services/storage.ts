@@ -112,7 +112,8 @@ export async function loadSettings(): Promise<AppSettings> {
   try {
     await ensureDataDir();
     const content = await readTextFile(`${DATA_DIR}/${SETTINGS_FILE}`, { baseDir: BaseDirectory.AppData });
-    return JSON.parse(content);
+    // 合并默认值：旧版本 settings.json 缺少新增字段（如 skin）时自动回退，不报错
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(content) };
   } catch {
     await saveSettings(DEFAULT_SETTINGS);
     return DEFAULT_SETTINGS;

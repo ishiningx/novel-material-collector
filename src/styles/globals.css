@@ -2,6 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== 皮肤系统变量（默认值 = 简版浅色语义）=====
+ * RGB 三元组供 rgb(var(--x) / <alpha-value>) 使用；
+ * 高亮色对齐原 Tailwind 色板：light = 200 号色 /60，dark = 500 号色 /20 */
+:root {
+  --skin-bg-main: 248, 250, 252;
+  --skin-bg-panel: 255, 255, 255;
+  --skin-bg-hover: 241, 245, 249;
+  --skin-text-primary: 17, 24, 39;
+  --skin-text-secondary: 107, 114, 128;
+  --skin-text-tertiary: 156, 163, 175;
+  --skin-accent: 44, 95, 110;
+  --skin-accent-soft: rgba(44, 95, 110, 0.08);
+  --skin-divider: 229, 231, 235;
+  --skin-btn-text: #ffffff;
+  --skin-underline: rgba(44, 95, 110, 0.35);
+  --skin-accent-dark: 44, 95, 110;
+  --skin-select-ring: #ffffff;
+
+  --hl-yellow-bg: rgba(254, 240, 138, 0.6);
+  --hl-yellow-text: #a16207;
+  --hl-yellow-border: #facc15;
+  --hl-yellow-dot: #facc15;
+  --hl-green-bg: rgba(187, 247, 208, 0.6);
+  --hl-green-text: #15803d;
+  --hl-green-border: #4ade80;
+  --hl-green-dot: #4ade80;
+  --hl-blue-bg: rgba(191, 219, 254, 0.6);
+  --hl-blue-text: #1d4ed8;
+  --hl-blue-border: #60a5fa;
+  --hl-blue-dot: #60a5fa;
+  --hl-pink-bg: rgba(251, 207, 232, 0.6);
+  --hl-pink-text: #be185d;
+  --hl-pink-border: #f472b6;
+  --hl-pink-dot: #f472b6;
+  --hl-orange-bg: rgba(254, 215, 170, 0.6);
+  --hl-orange-text: #c2410c;
+  --hl-orange-border: #fb923c;
+  --hl-orange-dot: #fb923c;
+  --hl-purple-bg: rgba(233, 213, 255, 0.6);
+  --hl-purple-text: #7e22ce;
+  --hl-purple-border: #c084fc;
+  --hl-purple-dot: #c084fc;
+}
+
+/* 深色模式高亮色（原 dark:bg-*-500/20 语义） */
+.dark {
+  --hl-yellow-bg: rgba(234, 179, 8, 0.2);
+  --hl-yellow-text: #facc15;
+  --hl-yellow-border: #facc15;
+  --hl-green-bg: rgba(34, 197, 94, 0.2);
+  --hl-green-text: #4ade80;
+  --hl-green-border: #4ade80;
+  --hl-blue-bg: rgba(59, 130, 246, 0.2);
+  --hl-blue-text: #60a5fa;
+  --hl-blue-border: #60a5fa;
+  --hl-pink-bg: rgba(236, 72, 153, 0.2);
+  --hl-pink-text: #f472b6;
+  --hl-pink-border: #f472b6;
+  --hl-orange-bg: rgba(249, 115, 22, 0.2);
+  --hl-orange-text: #fb923c;
+  --hl-orange-border: #fb923c;
+  --hl-purple-bg: rgba(168, 85, 247, 0.2);
+  --hl-purple-text: #c084fc;
+  --hl-purple-border: #c084fc;
+}
+
 /* Global styles */
 * {
   margin: 0;
@@ -63,9 +129,9 @@ body {
   overflow: hidden;
 }
 
-/* Selection styling */
+/* Selection styling（跟随皮肤强调色） */
 ::selection {
-  background-color: rgba(44, 95, 110, 0.2);
+  background-color: rgba(var(--skin-accent), 0.2);
 }
 
 .dark ::selection {
@@ -110,7 +176,7 @@ button, a, input, select {
     @apply inline-flex items-center gap-1 px-3 py-1 text-xs rounded-full transition-colors;
   }
   .chip-active {
-    @apply bg-primary text-white dark:bg-primary dark:text-white;
+    @apply bg-primary text-white dark:bg-primary dark:text-white ring-1 ring-inset ring-[var(--skin-select-ring)];
   }
   .chip-inactive {
     @apply ring-1 ring-inset ring-gray-200 dark:ring-dark-100 text-gray-600 dark:text-gray-400 hover:ring-gray-400/50;
@@ -152,6 +218,33 @@ button, a, input, select {
 /* Highlight text cursor */
 .highlighted-text-area {
   cursor: text;
+}
+
+/* 素材返回原文定位闪烁：皮肤强调色淡底闪烁 2 次 */
+@keyframes flashBg {
+  0% {
+    background-color: transparent;
+  }
+  20% {
+    background-color: rgba(var(--skin-accent), 0.35);
+  }
+  40% {
+    background-color: transparent;
+  }
+  60% {
+    background-color: rgba(var(--skin-accent), 0.35);
+  }
+  80% {
+    background-color: transparent;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-flash {
+  animation: flashBg 1.4s ease-in-out;
+  border-radius: 2px;
 }
 
 /* Color picker animation */
@@ -229,4 +322,424 @@ button, a, input, select {
     opacity: 0;
     transform: translate(calc(var(--tx) * 1.5), calc(var(--ty) * 2)) scale(0.8) rotate(calc(var(--rot) * 2));
   }
+}
+
+/* ===== 皮肤方案：森之呼吸（forest）/ 喵呜午后（cat） =====
+ * 色值来自设计交付；皮肤模式强制浅色（SettingsContext 移除 dark 类 + color-scheme: light），
+ * 语义覆盖规则使用未分层 CSS，优先级高于 @layer 内的 Tailwind utilities */
+
+/* 森之呼吸：夏日窗纱透进的柔和绿意 */
+[data-skin="forest"] {
+  --skin-bg-main: 246, 248, 241;
+  --skin-bg-panel: 253, 252, 248;
+  --skin-bg-hover: 232, 240, 224;
+  --skin-text-primary: 61, 74, 44;
+  --skin-text-secondary: 122, 139, 110;
+  --skin-text-tertiary: 154, 164, 140;
+  --skin-accent: 143, 181, 115;
+  --skin-accent-soft: rgba(212, 232, 197, 0.55);
+  --skin-divider: 213, 221, 208;
+  --skin-btn-text: #3d4a2c;
+  --skin-underline: rgba(143, 181, 115, 0.45);
+  --skin-accent-dark: 90, 122, 63;
+  --skin-select-ring: rgb(90, 122, 63);
+  --skin-watermark-img: url('/skins/forest/watermark.png');
+  --skin-reader-footer-img: url('/skins/forest/footer.png');
+  --skin-comment-footer-img: url('/skins/forest/footer.png');
+  --skin-app-footer-img: url('/skins/forest/footer.png');
+  --skin-btn-deco-img: url('/skins/forest/button.png');
+
+  --hl-yellow-bg: #e8d088;
+  --hl-yellow-text: #7a6420;
+  --hl-yellow-border: #e8d088;
+  --hl-yellow-dot: #e8d088;
+  --hl-green-bg: #8fb573;
+  --hl-green-text: #45603a;
+  --hl-green-border: #8fb573;
+  --hl-green-dot: #8fb573;
+  --hl-blue-bg: #a8c8d8;
+  --hl-blue-text: #3f7087;
+  --hl-blue-border: #a8c8d8;
+  --hl-blue-dot: #a8c8d8;
+  --hl-pink-bg: #e8b8b8;
+  --hl-pink-text: #9c5656;
+  --hl-pink-border: #e8b8b8;
+  --hl-pink-dot: #e8b8b8;
+  --hl-orange-bg: #d8b080;
+  --hl-orange-text: #85602a;
+  --hl-orange-border: #d8b080;
+  --hl-orange-dot: #d8b080;
+  --hl-purple-bg: #c8b8d0;
+  --hl-purple-text: #6a5c80;
+  --hl-purple-border: #c8b8d0;
+  --hl-purple-dot: #c8b8d0;
+}
+
+/* 喵呜午后：被猫咪和阳光包围的治愈午后 */
+[data-skin="cat"] {
+  --skin-bg-main: 253, 248, 240;
+  --skin-bg-panel: 255, 253, 249;
+  --skin-bg-hover: 255, 240, 216;
+  --skin-text-primary: 74, 64, 58;
+  --skin-text-secondary: 154, 144, 136;
+  --skin-text-tertiary: 176, 168, 160;
+  --skin-accent: 232, 152, 128;
+  --skin-accent-soft: rgba(252, 232, 216, 0.65);
+  --skin-divider: 232, 224, 216;
+  --skin-btn-text: #4a403a;
+  --skin-underline: rgba(232, 152, 128, 0.5);
+  --skin-accent-dark: 196, 113, 79;
+  --skin-select-ring: rgb(196, 113, 79);
+  --skin-watermark-img: url('/skins/cat/watermark.png');
+  --skin-comment-cat-img: url('/skins/cat/cat1.png');
+  --skin-comment-cat3-img: url('/skins/cat/cat3.png');
+  --skin-btn-deco-img: url('/skins/cat/cat2.png');
+  --skin-comment-bg: rgba(249, 243, 235, 0.95);
+
+  --hl-yellow-bg: #f8e0a0;
+  --hl-yellow-text: #7d6a1f;
+  --hl-yellow-border: #f8e0a0;
+  --hl-yellow-dot: #f8e0a0;
+  --hl-green-bg: #b8d8c0;
+  --hl-green-text: #3f7a5c;
+  --hl-green-border: #b8d8c0;
+  --hl-green-dot: #b8d8c0;
+  --hl-blue-bg: #a8d0e8;
+  --hl-blue-text: #3f7090;
+  --hl-blue-border: #a8d0e8;
+  --hl-blue-dot: #a8d0e8;
+  --hl-pink-bg: #f8c8d8;
+  --hl-pink-text: #9c5a72;
+  --hl-pink-border: #f8c8d8;
+  --hl-pink-dot: #f8c8d8;
+  --hl-orange-bg: #f0b080;
+  --hl-orange-text: #935c2a;
+  --hl-orange-border: #f0b080;
+  --hl-orange-dot: #f0b080;
+  --hl-purple-bg: #d8c8e8;
+  --hl-purple-text: #6a5c96;
+  --hl-purple-border: #d8c8e8;
+  --hl-purple-dot: #d8c8e8;
+}
+
+/* ===== 语义类覆盖：非 default 皮肤共用，按语义批量映射高频 Tailwind 类 ===== */
+
+/* 主文字 */
+[data-skin]:not([data-skin="default"]) .text-gray-900,
+[data-skin]:not([data-skin="default"]) .text-gray-800,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-100,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-200 {
+  color: rgb(var(--skin-text-primary));
+}
+
+/* 次要文字 */
+[data-skin]:not([data-skin="default"]) .text-gray-700,
+[data-skin]:not([data-skin="default"]) .text-gray-600,
+[data-skin]:not([data-skin="default"]) .text-gray-500,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-300,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-400 {
+  color: rgb(var(--skin-text-secondary));
+}
+
+/* 弱化文字（提示/占位/图标弱态） */
+[data-skin]:not([data-skin="default"]) .text-gray-400,
+[data-skin]:not([data-skin="default"]) .text-gray-300,
+[data-skin]:not([data-skin="default"]) .text-gray-200,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-500,
+[data-skin]:not([data-skin="default"]) .dark\:text-gray-600 {
+  color: rgb(var(--skin-text-tertiary));
+}
+
+[data-skin]:not([data-skin="default"]) .placeholder-gray-400::placeholder {
+  color: rgb(var(--skin-text-tertiary));
+}
+
+/* 背景：主背景半透明让纹理透出，面板不透明，悬停与弱底用 hover 色 */
+[data-skin]:not([data-skin="default"]) .bg-surface,
+[data-skin]:not([data-skin="default"]) .dark\:bg-dark {
+  background-color: rgba(var(--skin-bg-main), 0.92);
+}
+[data-skin]:not([data-skin="default"]) .bg-white,
+[data-skin]:not([data-skin="default"]) .dark\:bg-dark-50,
+[data-skin]:not([data-skin="default"]) .dark\:bg-dark-100 {
+  background-color: rgb(var(--skin-bg-panel));
+}
+[data-skin]:not([data-skin="default"]) .bg-gray-50,
+[data-skin]:not([data-skin="default"]) .bg-gray-100,
+[data-skin]:not([data-skin="default"]) .dark\:bg-dark-200,
+[data-skin]:not([data-skin="default"]) .hover\:bg-gray-50:hover,
+[data-skin]:not([data-skin="default"]) .hover\:bg-gray-100:hover,
+[data-skin]:not([data-skin="default"]) .dark\:hover\:bg-dark-200:hover {
+  background-color: rgb(var(--skin-bg-hover));
+}
+[data-skin]:not([data-skin="default"]) .bg-gray-200 {
+  background-color: rgb(var(--skin-divider));
+}
+[data-skin]:not([data-skin="default"]) .dark\:bg-white\/10 {
+  background-color: rgba(var(--skin-accent), 0.12);
+}
+
+/* 分隔线与边框 */
+[data-skin]:not([data-skin="default"]) .border-gray-100,
+[data-skin]:not([data-skin="default"]) .border-gray-200,
+[data-skin]:not([data-skin="default"]) .border-gray-300,
+[data-skin]:not([data-skin="default"]) .dark\:border-dark-100,
+[data-skin]:not([data-skin="default"]) .dark\:border-gray-700,
+[data-skin]:not([data-skin="default"]) .divide-gray-50 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(var(--skin-divider));
+}
+
+/* 输入框描边 */
+[data-skin]:not([data-skin="default"]) .ring-gray-200,
+[data-skin]:not([data-skin="default"]) .ring-gray-400,
+[data-skin]:not([data-skin="default"]) .dark\:ring-dark-100 {
+  --tw-ring-color: rgb(var(--skin-divider));
+}
+
+/* 组件类覆盖 */
+[data-skin]:not([data-skin="default"]) .card {
+  background-color: rgb(var(--skin-bg-panel));
+}
+[data-skin]:not([data-skin="default"]) .glass-panel {
+  background-color: rgba(var(--skin-bg-panel), 0.82);
+}
+[data-skin]:not([data-skin="default"]) .nav-item-active {
+  background-color: var(--skin-accent-soft);
+}
+
+/* 按钮/选中 chip 文字色：浅色 accent 上深字保证对比度（原白字） */
+[data-skin]:not([data-skin="default"]) .btn-primary,
+[data-skin]:not([data-skin="default"]) .chip-active {
+  color: var(--skin-btn-text);
+}
+
+/* 皮肤下强调文字加深（accent 偏浅时保证可读性） */
+[data-skin]:not([data-skin="default"]) .text-primary {
+  color: rgb(var(--skin-accent-dark));
+}
+
+/* ===== 高亮 CSS 类（与 types HIGHLIGHT_COLOR_MAP/CIRCLE 配套） ===== */
+.hl-bg-yellow { background-color: var(--hl-yellow-bg); }
+.hl-bg-green { background-color: var(--hl-green-bg); }
+.hl-bg-blue { background-color: var(--hl-blue-bg); }
+.hl-bg-pink { background-color: var(--hl-pink-bg); }
+.hl-bg-orange { background-color: var(--hl-orange-bg); }
+.hl-bg-purple { background-color: var(--hl-purple-bg); }
+
+.hl-text-yellow { color: var(--hl-yellow-text); }
+.hl-text-green { color: var(--hl-green-text); }
+.hl-text-blue { color: var(--hl-blue-text); }
+.hl-text-pink { color: var(--hl-pink-text); }
+.hl-text-orange { color: var(--hl-orange-text); }
+.hl-text-purple { color: var(--hl-purple-text); }
+
+.hl-border-yellow { border-color: var(--hl-yellow-border); }
+.hl-border-green { border-color: var(--hl-green-border); }
+.hl-border-blue { border-color: var(--hl-blue-border); }
+.hl-border-pink { border-color: var(--hl-pink-border); }
+.hl-border-orange { border-color: var(--hl-orange-border); }
+.hl-border-purple { border-color: var(--hl-purple-border); }
+
+.hl-dot-yellow { background-color: var(--hl-yellow-dot); }
+.hl-dot-green { background-color: var(--hl-green-dot); }
+.hl-dot-blue { background-color: var(--hl-blue-dot); }
+.hl-dot-pink { background-color: var(--hl-pink-dot); }
+.hl-dot-orange { background-color: var(--hl-orange-dot); }
+.hl-dot-purple { background-color: var(--hl-purple-dot); }
+
+/* ===== 皮肤背景纹理（叠加在 body 底色上，经半透明内容区隐约透出） ===== */
+[data-skin="forest"] body {
+  color-scheme: light;
+  background-color: rgb(var(--skin-bg-main));
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(143, 181, 115, 0.05) 0 3px, transparent 4px),
+    radial-gradient(circle at 32% 68%, rgba(143, 181, 115, 0.04) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 60% 40%, rgba(143, 181, 115, 0.05) 0 3px, transparent 4px),
+    radial-gradient(circle at 78% 75%, rgba(143, 181, 115, 0.04) 0 2.5px, transparent 3.5px),
+    radial-gradient(circle at 90% 15%, rgba(143, 181, 115, 0.05) 0 3px, transparent 4px),
+    repeating-linear-gradient(90deg, transparent 0 40px, rgba(143, 181, 115, 0.03) 40px 41px);
+}
+
+[data-skin="cat"] body {
+  color-scheme: light;
+  background-color: rgb(var(--skin-bg-main));
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(232, 152, 128, 0.04) 30px 31px),
+    radial-gradient(circle at 22% 30%, rgba(232, 152, 128, 0.06) 0 5px, transparent 6px),
+    radial-gradient(circle at 65% 55%, rgba(232, 152, 128, 0.05) 0 4px, transparent 5px),
+    radial-gradient(circle at 85% 20%, rgba(232, 152, 128, 0.06) 0 5px, transparent 6px),
+    radial-gradient(circle at 40% 82%, rgba(232, 152, 128, 0.05) 0 4px, transparent 5px);
+}
+
+/* 皮肤水印底纹（例文阅读区 / 评论右栏），素材图未提供时不显示 */
+.skin-reader-bg,
+.skin-comment-bg {
+  position: relative;
+}
+.skin-comment-bg {
+  background-color: var(--skin-comment-bg, transparent);
+}
+.skin-reader-bg::before,
+.skin-comment-bg::before {
+  content: '';
+  position: absolute;
+  right: -14px;
+  bottom: -10px;
+  z-index: 1;
+  width: 340px;
+  height: 340px;
+  background-image: var(--skin-watermark-img, none);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: right bottom;
+  opacity: 0.06;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 皮肤底部装饰：例文阅读区（森系 footer 图），低透明度不挡阅读 */
+.skin-reader-bg::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  background-image: var(--skin-reader-footer-img, none);
+  background-size: cover;
+  background-position: center bottom;
+  opacity: 0.15;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 皮肤底部装饰：评论右栏（森系 footer 图），放在评论内容下层 */
+.skin-comment-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  background-image: var(--skin-comment-footer-img, none);
+  background-size: cover;
+  background-position: center bottom;
+  opacity: 0.15;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 皮肤贴底装饰：评论右栏底部猫（喵系 cat1），评论在上层自然盖住它，贴近中间分界线 */
+.skin-comment-cat {
+  position: absolute;
+  left: -8px;
+  bottom: 0;
+  width: 52%;
+  aspect-ratio: 512 / 527;
+  background-image: var(--skin-comment-cat-img, none);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  opacity: 0.85;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 主要按钮底纹（森林 button.png / 喵呜 cat2，统一 80% 透明度，完全在按钮左侧、间距 2px，z-40 不被横幅遮挡） */
+.skin-btn-deco {
+  position: absolute;
+  left: -74px;
+  bottom: -16px;
+  width: 72px;
+  height: 72px;
+  background-image: var(--skin-btn-deco-img, none);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.8;
+  z-index: 40;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 森林底纹再小一档（72px 的 80%），喵呜 cat2 保持 72px */
+[data-skin="forest"] .skin-btn-deco {
+  width: 57.6px;
+  height: 57.6px;
+  left: -59.6px;
+}
+
+/* 导入文章按钮的左侧留白：图片贴左缘分界线（x=16）后，按钮跟在图片右侧；default 无图片回原位 */
+.skin-btn-spacer {
+  margin-left: 74px;
+}
+[data-skin="forest"] .skin-btn-spacer {
+  margin-left: 59.6px;
+}
+[data-skin="default"] .skin-btn-spacer {
+  margin-left: 0;
+}
+
+/* 森林/喵呜皮肤下主按钮（保存/导入文章）隐藏 icon，缩短按钮避免与底纹重叠；default 保留原 icon */
+[data-skin]:not([data-skin="default"]) .skin-hide-btn-icon {
+  display: none;
+}
+
+/* 主按钮（保存/导入文章）立体化但柔和：浅 accent 底（皮肤色）+ 顶部高光 + 轻投影 */
+.skin-btn-primary {
+  background-color: rgb(var(--skin-accent));
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 6px 14px -6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.skin-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.2),
+    0 10px 18px -8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.skin-btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 评论内容行首小图标（喵系 cat3，替换原 MessageSquare 图标，直接显示猫头不带圆形白底边框） */
+.skin-comment-cat3-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-image: var(--skin-comment-cat3-img, none);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* 喵系皮肤下隐藏评论原 MessageSquare 图标（由 cat3 替代） */
+[data-skin="cat"] .skin-comment-msgicon {
+  display: none;
+}
+
+/* 非喵系皮肤下隐藏 cat3 图标（default/森林仍用原 MessageSquare） */
+[data-skin]:not([data-skin="cat"]) .skin-comment-cat3-icon {
+  display: none;
+}
+
+/* 列表页底部底纹（森系 footer 图，例文/分析列表页共用） */
+.skin-app-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  background-image: var(--skin-app-footer-img, none);
+  background-size: cover;
+  background-position: center bottom;
+  opacity: 0.15;
+  pointer-events: none;
+  user-select: none;
 }

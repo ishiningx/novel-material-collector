@@ -82,6 +82,8 @@ interface MaterialContextValue {
   updateMaterial: (item: MaterialItem) => Promise<void>;
   deleteMaterial: (id: string) => Promise<void>;
   addCategory: (name: string) => Promise<void>;
+  updateCategory: (id: string, newName: string) => Promise<void>;
+  reorderCategories: (ids: string[]) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   deleteCategoryAndMigrateMaterials: (id: string) => Promise<void>;
   getMaterialsByCategory: (category: string) => MaterialItem[];
@@ -227,6 +229,45 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_CATEGORY', payload: id });
   };
 
+  // 分类改名：同时将关联素材的分类名同步迁移（素材按名称引用分类）
+  const updateCategory = async (id: string, newName: string) => {
+    const category = state.categories.find((c) => c.id === id);
+    if (!category || !newName.trim()) return;
+    const trimmed = newName.trim();
+    if (trimmed === category.name) return;
+    if (state.categories.some((c) => c.id !== id && c.name === trimmed)) {
+      throw new Error('分类名称已存在');
+    }
+    const updatedCategories = state.categories.map((c) =>
+      c.id === id ? { ...c, name: trimmed } : c
+    );
+    await saveCategories(updatedCategories);
+    // 迁移该分类下素材的名称引用
+    const updatedMaterials = state.materials.map((m) =>
+      m.category === category.name ? { ...m, category: trimmed } : m
+    );
+    const materialsChanged = updatedMaterials.some((m, i) => m !== state.materials[i]);
+    if (materialsChanged) {
+      await saveMaterials(updatedMaterials);
+      dispatch({ type: 'SET_MATERIALS', payload: updatedMaterials });
+    }
+    dispatch({ type: 'SET_CATEGORIES', payload: updatedCategories });
+  };
+
+  // 按传入的 id 顺序重排分类
+  const reorderCategories = async (ids: string[]) => {
+    const orderMap = new Map(ids.map((id, idx) => [id, idx]));
+    const sorted = [...state.categories].sort((a, b) => {
+      const ia = orderMap.get(a.id);
+      const ib = orderMap.get(b.id);
+      if (ia === undefined) return 1;
+      if (ib === undefined) return -1;
+      return ia - ib;
+    });
+    await saveCategories(sorted);
+    dispatch({ type: 'SET_CATEGORIES', payload: sorted });
+  };
+
   const deleteCategoryAndMigrateMaterials = async (id: string) => {
     const category = state.categories.find((c) => c.id === id);
     if (!category) return;
@@ -268,6 +309,8 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         updateMaterial,
         deleteMaterial,
         addCategory,
+        updateCategory,
+        reorderCategories,
         deleteCategory,
         deleteCategoryAndMigrateMaterials,
         getMaterialsByCategory,

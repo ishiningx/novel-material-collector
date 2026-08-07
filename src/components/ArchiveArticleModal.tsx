@@ -170,11 +170,7 @@ export function ArchiveArticleModal({
                   <div key={g} className="relative group">
                     <button
                       onClick={() => toggleCategory(g)}
-                      className={`chip pr-1.5 ${
-                        active
-                          ? 'chip-active'
-                          : 'chip-inactive'
-                      }`}
+                      className={`chip !py-1.5 !text-sm ${active ? 'chip-active' : 'chip-inactive'}`}
                     >
                       {g}
                       {!isDefault && (
@@ -196,7 +192,7 @@ export function ArchiveArticleModal({
               })}
               <button
                 onClick={() => setShowAddGenre(!showAddGenre)}
-                className="chip chip-inactive flex items-center gap-1"
+                className="chip chip-inactive !py-1.5 !text-sm flex items-center gap-1"
               >
                 <Plus size={12} />
                 新题材

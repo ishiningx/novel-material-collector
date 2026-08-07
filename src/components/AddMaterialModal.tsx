@@ -83,7 +83,7 @@ export function AddMaterialModal({ visible, categories, onConfirm, onClose }: Ad
                   onClick={() => setSelectedCat(cat.name)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ring-1 ring-inset ${
                     selectedCat === cat.name
-                      ? 'bg-primary text-white ring-primary'
+                      ? 'bg-primary text-[var(--skin-btn-text)] ring-[var(--skin-select-ring)]'
                       : 'text-gray-600 dark:text-gray-400 ring-gray-200 dark:ring-dark-100 hover:ring-primary/50 hover:text-primary'
                   }`}
                 >

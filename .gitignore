@@ -33,3 +33,6 @@ npm-debug.log*
 convert_csv.mjs
 test_backup_for_windows.json
 *.csv
+
+# Skin source backups
+skins_backup/

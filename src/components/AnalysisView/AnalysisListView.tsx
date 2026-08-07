@@ -144,17 +144,22 @@ export function AnalysisListView({ onOpenArticle }: AnalysisListViewProps) {
   const hasActiveFilters = keyword || selectedGimmicks.length > 0 || selectedCats.length > 0 || platform || dateFilter !== 'all' || onlyClassic;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
+      {/* 列表页底部底纹（森系 footer 图，例文草稿/例文库共用） */}
+      <div className="skin-app-footer" aria-hidden />
       {/* Toolbar */}
       <header className="h-16 glass-panel border-b border-gray-200/50 dark:border-gray-700 flex items-center px-4 gap-3 shrink-0">
-        <button
-          onClick={handleNewArticle}
-          disabled={loading}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={15} strokeWidth={1.5} />
-          {loading ? '导入中...' : '导入文章'}
-        </button>
+        <span className="relative inline-flex skin-btn-spacer">
+          <span className="skin-btn-deco" aria-hidden />
+          <button
+            onClick={handleNewArticle}
+            disabled={loading}
+            className="btn-primary skin-btn-primary flex items-center gap-2"
+          >
+            <Plus size={15} strokeWidth={1.5} className="skin-hide-btn-icon" />
+            {loading ? '导入中...' : '导入文章'}
+          </button>
+        </span>
 
         {/* Tabs */}
         <div className="flex items-center gap-1 ml-3 bg-gray-100 dark:bg-dark-200 rounded-lg p-0.5">
@@ -423,7 +428,7 @@ function FilterChip({
   const activeCls =
     accent === 'amber'
       ? 'bg-amber-50 border-amber-400 text-amber-600 dark:bg-amber-900/20'
-      : 'bg-primary/15 text-primary dark:bg-primary/25 dark:text-gray-200';
+      : 'bg-primary/15 ring-1 ring-inset ring-primary/40 text-primary dark:bg-primary/25 dark:text-gray-200';
   const hoverCls = accent === 'amber' ? 'hover:border-amber-300' : '';
   return (
     <button
@@ -598,6 +603,13 @@ function ArchivedList({
                     <span className="text-[11px] text-gray-400">+{article.categories.length - 3}</span>
                   )}
                 </div>
+              )}
+
+              {/* 正文前 200 字摘要 */}
+              {article.content && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3 mb-1.5 break-words">
+                  {article.content.replace(/\s+/g, ' ').slice(0, 200)}
+                </p>
               )}
 
               {/* Platform + Core Gimmick */}

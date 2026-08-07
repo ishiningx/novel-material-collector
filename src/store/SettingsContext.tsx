@@ -47,6 +47,25 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await saveSettings(newSettings as AppSettings);
   };
 
+  // 主题与皮肤管理：皮肤激活时强制浅色（不加 dark、color-scheme: light），
+  // 否则跟随系统 prefers-color-scheme 在 documentElement 上切换 dark 类
+  useEffect(() => {
+    if (!state.loaded) return;
+    const root = document.documentElement;
+    root.dataset.skin = state.skin;
+    if (state.skin !== 'default') {
+      root.classList.remove('dark');
+      root.style.colorScheme = 'light';
+      return;
+    }
+    root.style.colorScheme = '';
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => root.classList.toggle('dark', mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [state.skin, state.loaded]);
+
   return (
     <SettingsContext.Provider value={{ settings: state, updateSettings }}>
       {children}

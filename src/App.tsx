@@ -17,6 +17,7 @@ import { MaterialLibrary } from './components/MaterialLibrary';
 import { AnalysisView } from './components/AnalysisView/AnalysisView';
 import { WeeklyReportView } from './components/WeeklyReportView';
 import { WorkRecordView } from './components/WorkRecordView';
+import { SkinDecorLayer } from './components/SkinDecorLayer';
 import { AppLayout, Toast } from './components/SharedUI';
 import { UpgradeIntroModal } from './components/UpgradeIntroModal';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
@@ -29,7 +30,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<ViewType>('analysis');
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const { state: materialState, refreshMaterials } = useMaterialContext();
-  const { state: articleState, refreshArticles } = useArticleContext();
+  const { state: articleState, refreshArticles, setCurrentArticle, setReaderTarget } = useArticleContext();
   const { state: workState, refreshWorks } = useWorkContext();
   const { settings, updateSettings } = useSettingsContext();
 
@@ -77,6 +78,13 @@ function AppContent() {
     }
   };
 
+  // 素材库“返回原文”：切换到分析视图并打开对应文章，定位到 offset
+  const handleOpenFromMaterial = (articleId: string, offset: number) => {
+    setCurrentView('analysis');
+    setCurrentArticle(articleId);
+    setReaderTarget(offset);
+  };
+
   return (
     <AppLayout
       currentView={currentView}
@@ -94,7 +102,7 @@ function AppContent() {
         <AnalysisView />
       </div>
       <div className={currentView === 'library' ? 'contents' : 'hidden'}>
-        <MaterialLibrary />
+        <MaterialLibrary onOpenArticle={handleOpenFromMaterial} />
       </div>
       <div className={currentView === 'weekly-report' ? 'contents' : 'hidden'}>
         <WeeklyReportView />
@@ -103,6 +111,9 @@ function AppContent() {
         <WorkRecordView />
       </div>
       <UpgradeIntroModal />
+
+      {/* 皮肤装饰层：顶部装饰条 + 角落贴纸（default 皮肤不渲染） */}
+      <SkinDecorLayer />
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 

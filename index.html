@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>素材收集器</title>
+    <!-- 首帧前按系统偏好预判深色模式，避免深色用户闪白；SettingsContext 加载后会接管 dark 类 -->
+    <script>
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.add('dark');
+    </script>
   </head>
   <body>
     <div id="root"></div>

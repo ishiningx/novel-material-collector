@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { ArrowLeft, BookmarkPlus, Edit3, Type, Star, Save } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { ArrowLeft, BookmarkPlus, Edit3, Type, Star, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useArticleContext } from '../../store/ArticleContext';
 import { useMaterialContext } from '../../store/MaterialContext';
 import { useSettingsContext } from '../../store/SettingsContext';
@@ -12,13 +12,14 @@ import { useSelectionCharCount } from '../../hooks/useSelectionCharCount';
 import { Toast, getCategoryColor } from '../SharedUI';
 import { AVAILABLE_FONTS, FONT_SIZES } from '../../types';
 import type { HighlightColor, ArticleMetadata } from '../../types';
+import { buildPageBoundaries, findPageForOffset, LONG_FORM_THRESHOLD } from '../../services/pagination';
 
 interface AnalysisEditorViewProps {
   onBack: () => void;
 }
 
 export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
-  const { state: articleState, getCurrentArticle, addHighlight, removeHighlight, updateComment, deleteComment, archiveArticle, updateArticle, addGenre, deleteGenre } = useArticleContext();
+  const { state: articleState, getCurrentArticle, addHighlight, removeHighlight, updateComment, deleteComment, archiveArticle, updateArticle, addGenre, deleteGenre, readerTarget, clearReaderTarget, updateReadingProgress } = useArticleContext();
   const { addMaterial, addCategory, state: materialState } = useMaterialContext();
   const { settings, updateSettings } = useSettingsContext();
 
@@ -38,8 +39,8 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
   // Font controls menu state
   const [showFontMenu, setShowFontMenu] = useState(false);
 
-  // Metadata panel collapse state (archived only)
-  const [metaPanelOpen, setMetaPanelOpen] = useState(true);
+  // Metadata panel collapse state (archived only) — 进入时默认收起
+  const [metaPanelOpen, setMetaPanelOpen] = useState(false);
 
   // Title editing state
   const [editingTitle, setEditingTitle] = useState(false);
@@ -52,6 +53,43 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
     });
     return Array.from(set);
   }, [articleState.articles]);
+
+  // 长篇小说模式：超过阈值启用分页阅读（运行时动态判断，旧数据自动兼容）
+  const isLongForm = !!article && article.content.length > LONG_FORM_THRESHOLD;
+  const pageBoundaries = useMemo(() => {
+    if (!article || !isLongForm) return null;
+    return buildPageBoundaries(article.content);
+  }, [article, isLongForm]);
+  const [pageIndex, setPageIndex] = useState(0);
+
+  // 切换文章时恢复上次阅读页（旧数据无 lastReadPage 时回退第 1 页）
+  useEffect(() => {
+    if (article) setPageIndex(article.lastReadPage ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article?.id]);
+
+  // 翻页后防抖保存阅读进度（不更新 updatedAt）
+  useEffect(() => {
+    if (!article || !isLongForm) return;
+    const t = window.setTimeout(() => {
+      updateReadingProgress(article.id, pageIndex);
+    }, 500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageIndex, isLongForm, article?.id, updateReadingProgress]);
+
+  // 素材库“返回原文”定位请求（key 递增保证同 offset 重复定位也生效）
+  const [locateReq, setLocateReq] = useState<{ offset: number; key: number } | null>(null);
+  useEffect(() => {
+    if (!article || !readerTarget) return;
+    const { offset } = readerTarget;
+    // 长篇小说：先切到 offset 所在页，再页内定位
+    if (isLongForm && pageBoundaries) {
+      setPageIndex(findPageForOffset(pageBoundaries, offset));
+    }
+    setLocateReq((prev) => ({ offset, key: (prev?.key ?? 0) + 1 }));
+    clearReaderTarget();
+  }, [readerTarget, article, isLongForm, pageBoundaries, clearReaderTarget]);
 
   // Compute material ranges for this article so the reader can show a dotted underline
   // on text segments that have been collected into the material library.
@@ -180,10 +218,18 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
   const commentCount = article.comments.filter((c) => c.text).length;
   const totalChars = article.content.length;
 
+  // 长篇分页：当前页起止 offset（clamp 防止旧进度越界）
+  const pageCount = isLongForm && pageBoundaries ? pageBoundaries.length - 1 : 1;
+  const currentPage = Math.min(pageIndex, pageCount - 1);
+  const pageStart = isLongForm && pageBoundaries ? pageBoundaries[currentPage] : 0;
+  const pageEnd = isLongForm && pageBoundaries
+    ? (pageBoundaries[currentPage + 1] ?? article.content.length)
+    : article.content.length;
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <header className="h-16 glass-panel border-b border-gray-200/50 dark:border-gray-700 flex items-center px-4 gap-3 shrink-0">
+      <header className="relative z-40 h-16 glass-panel border-b border-gray-200/50 dark:border-gray-700 flex items-center px-4 gap-3 shrink-0">
         <button
           onClick={onBack}
           className="btn-ghost flex items-center gap-1"
@@ -276,27 +322,29 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
             )}
           </div>
 
-          <button
-            onClick={() => {
-              if (article.status === 'archived') {
-                handleSave();
-              } else {
-                setShowArchiveModal(true);
-              }
-            }}
-            className="btn-primary flex items-center gap-1.5"
-            title={article.status === 'archived' ? '保存（高亮与笔记已自动保存）' : '加入例文库'}
-          >
-            {article.status === 'archived' ? <Save size={14} strokeWidth={1.5} /> : <BookmarkPlus size={14} strokeWidth={1.5} />}
-            {article.status === 'archived' ? '保存' : '加入例文库'}
-          </button>
+          <span className="relative inline-flex">
+            <button
+              onClick={() => {
+                if (article.status === 'archived') {
+                  handleSave();
+                } else {
+                  setShowArchiveModal(true);
+                }
+              }}
+              className="btn-primary skin-btn-primary flex items-center gap-1.5"
+              title={article.status === 'archived' ? '保存（高亮与笔记已自动保存）' : '加入例文库'}
+            >
+              {article.status === 'archived' ? <Save size={14} strokeWidth={1.5} className="skin-hide-btn-icon" /> : <BookmarkPlus size={14} strokeWidth={1.5} className="skin-hide-btn-icon" />}
+              {article.status === 'archived' ? '保存' : '加入例文库'}
+            </button>
+          </span>
         </div>
       </header>
 
       {/* Dual-column layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left column: metadata panel + highlighted text (65%) */}
-        <div className="flex-[6.5] min-w-0 flex flex-col">
+        <div className="skin-reader-bg flex-[6.5] min-w-0 flex flex-col">
           {/* Metadata panel (archived only) — shown above the article text */}
           {article.status === 'archived' && (
             <div className="border-b border-gray-100 dark:border-dark-100/60 bg-surface dark:bg-dark px-4 py-2.5 shrink-0">
@@ -392,12 +440,58 @@ export function AnalysisEditorView({ onBack }: AnalysisEditorViewProps) {
               onContextMenu={handleContextMenu}
               fontFamily={settings.fontFamily}
               fontSize={settings.fontSize}
+              contentStart={isLongForm ? pageStart : undefined}
+              contentEnd={isLongForm ? pageEnd : undefined}
+              scrollToOffset={locateReq?.offset}
+              scrollRequestKey={locateReq?.key}
             />
           </div>
+
+          {/* 长篇分页工具条 */}
+          {isLongForm && pageBoundaries && (
+            <div className="shrink-0 border-t border-gray-100 dark:border-dark-100/60 bg-surface dark:bg-dark px-4 py-2 flex items-center gap-3 text-xs text-gray-500">
+              <button
+                onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                className="btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="上一页"
+              >
+                <ChevronLeft size={14} />
+                上一页
+              </button>
+              <div className="flex items-center gap-1.5">
+                <span>第</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pageCount}
+                  value={currentPage + 1}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v) && v >= 1 && v <= pageCount) setPageIndex(v - 1);
+                  }}
+                  className="w-14 text-center px-1 py-1 rounded-md ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-white dark:bg-dark text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <span>/ {pageCount} 页</span>
+              </div>
+              <button
+                onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={currentPage >= pageCount - 1}
+                className="btn-ghost px-2 py-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="下一页"
+              >
+                下一页
+                <ChevronRight size={14} />
+              </button>
+              <span className="ml-auto text-gray-400">
+                阅读进度 {Math.round(((currentPage + 1) / pageCount) * 100)}%
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Right column: notes (35%) */}
-        <div className="flex-[3.5] min-w-0">
+        <div className="skin-comment-bg flex-[3.5] min-w-0">
           <CommentPanel
             comments={article.comments}
             highlights={article.highlights}

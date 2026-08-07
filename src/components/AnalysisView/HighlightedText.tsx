@@ -17,6 +17,12 @@ interface HighlightedTextProps {
   onContextMenu?: (e: React.MouseEvent, selectedText: string) => void;
   fontFamily?: string;
   fontSize?: number;
+  /** 分页阅读：仅渲染 [contentStart, contentEnd) 区间（offset 均为全文全局偏移） */
+  contentStart?: number;
+  contentEnd?: number;
+  /** 定位到全文 offset：滚动到该位置并闪烁提示（scrollRequestKey 递增触发一次） */
+  scrollToOffset?: number;
+  scrollRequestKey?: number;
 }
 
 export function HighlightedText({
@@ -30,12 +36,18 @@ export function HighlightedText({
   onContextMenu,
   fontFamily,
   fontSize,
+  contentStart,
+  contentEnd,
+  scrollToOffset,
+  scrollRequestKey,
 }: HighlightedTextProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [pendingSelection, setPendingSelection] = useState<{ start: number; end: number } | null>(null);
   const [hoveredHighlightId, setHoveredHighlightId] = useState<string | null>(null);
+  const [flashRange, setFlashRange] = useState<{ start: number; end: number } | null>(null);
   const hideHoverTimerRef = useRef<number | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
 
   const cancelHideHover = useCallback(() => {
     if (hideHoverTimerRef.current !== null) {
@@ -53,17 +65,50 @@ export function HighlightedText({
   }, [cancelHideHover]);
 
   useEffect(() => {
-    return () => cancelHideHover();
+    return () => {
+      cancelHideHover();
+      if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
+    };
   }, [cancelHideHover]);
 
+  // 分页支持：仅渲染 [pageStart, pageEnd) 区间（offset 均为全文全局偏移）
+  const pageStart = contentStart ?? 0;
+  const pageEnd = contentEnd ?? content.length;
+  const pageContent = content.substring(pageStart, pageEnd);
+
+  // 将全文高亮裁切到当前页并相对化
+  const pageHighlights = useMemo(() => {
+    if (pageStart === 0 && pageEnd === content.length) return highlights;
+    const pageLength = pageEnd - pageStart;
+    return highlights
+      .filter((h) => h.endOffset > pageStart && h.startOffset < pageEnd)
+      .map((h) => ({
+        ...h,
+        startOffset: Math.max(0, h.startOffset - pageStart),
+        endOffset: Math.min(pageLength, h.endOffset - pageStart),
+      }));
+  }, [highlights, pageStart, pageEnd, content.length]);
+
+  // 素材范围同理裁切到当前页
+  const pageMaterialRanges = useMemo(() => {
+    if (pageStart === 0 && pageEnd === content.length) return materialRanges || [];
+    const pageLength = pageEnd - pageStart;
+    return (materialRanges || [])
+      .filter((r) => r.end > pageStart && r.start < pageEnd)
+      .map((r) => ({
+        start: Math.max(0, r.start - pageStart),
+        end: Math.min(pageLength, r.end - pageStart),
+      }));
+  }, [materialRanges, pageStart, pageEnd, content.length]);
+
   // Render text segments (segmentation is driven by highlight boundaries)
-  const rawSegments = renderHighlightedContent(content, highlights);
+  const rawSegments = renderHighlightedContent(pageContent, pageHighlights);
 
   // Secondary segmentation: also split at material-range boundaries so we can
   // mark each resulting segment with an `isMaterial` flag independently.
   type RichSegment = TextSegment & { isMaterial: boolean };
   const segments: RichSegment[] = useMemo(() => {
-    const ranges = (materialRanges || []).filter((r) => r.end > r.start);
+    const ranges = pageMaterialRanges.filter((r) => r.end > r.start);
     if (ranges.length === 0) {
       return rawSegments.map((s) => ({ ...s, isMaterial: false }));
     }
@@ -87,7 +132,7 @@ export function HighlightedText({
         result.push({
           start: s,
           end: e,
-          text: content.substring(s, e),
+          text: pageContent.substring(s, e),
           activeHighlights: seg.activeHighlights,
           inactiveHighlights: seg.inactiveHighlights,
           isMaterial,
@@ -95,7 +140,7 @@ export function HighlightedText({
       }
     });
     return result;
-  }, [rawSegments, materialRanges, content]);
+  }, [rawSegments, pageMaterialRanges, pageContent]);
 
   // Compute the last segment index for each active highlight id, so the cancel
   // button is only rendered right after the last character of the highlight.
@@ -138,6 +183,38 @@ export function HighlightedText({
     measurePositions();
   }, [highlights, measurePositions]);
 
+  // 分页切换后回到页顶
+  useLayoutEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = 0;
+  }, [pageStart]);
+
+  // 定位到全文 offset：滚动 + 闪烁提示（scrollRequestKey 递增触发）
+  useLayoutEffect(() => {
+    if (scrollRequestKey == null || scrollToOffset == null || !containerRef.current) return;
+    const container = containerRef.current;
+    const spans = Array.from(container.querySelectorAll<HTMLElement>('[data-start]'));
+    let target: HTMLElement | null = null;
+    let targetStart = -1;
+    for (const el of spans) {
+      const s = Number(el.dataset.start ?? -1);
+      if (Number.isFinite(s) && s <= scrollToOffset && s > targetStart) {
+        target = el;
+        targetStart = s;
+      }
+    }
+    if (!target) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = target.getBoundingClientRect();
+    container.scrollTop = Math.max(0, elRect.top - containerRect.top + container.scrollTop - 24);
+    // 闪烁：优先闪烁覆盖该位置的素材区间，否则闪烁目标文本段
+    const flash =
+      (materialRanges || []).find((r) => scrollToOffset >= r.start && scrollToOffset < r.end)
+      ?? { start: targetStart, end: targetStart + 1 };
+    setFlashRange(flash);
+    if (flashTimerRef.current !== null) window.clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = window.setTimeout(() => setFlashRange(null), 1800);
+  }, [scrollRequestKey, scrollToOffset, materialRanges]);
+
   // Remeasure on resize
   useEffect(() => {
     const observer = new ResizeObserver(() => {
@@ -161,13 +238,14 @@ export function HighlightedText({
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
 
-      setPendingSelection(offsets);
+      // 分页模式下将页内偏移转换为全文全局偏移
+      setPendingSelection({ start: offsets.start + pageStart, end: offsets.end + pageStart });
       setColorPickerPos({
         x: rect.left + rect.width / 2 - 110,
         y: rect.bottom + 8,
       });
     },
-    []
+    [pageStart]
   );
 
   // Color selected → create highlight
@@ -205,12 +283,21 @@ export function HighlightedText({
 
   // Render a text segment
   const renderSegment = (segment: RichSegment, index: number) => {
+    const globalStart = segment.start + pageStart;
+    const globalEnd = segment.end + pageStart;
+    const inFlash =
+      flashRange !== null && globalStart < flashRange.end && globalEnd > flashRange.start;
+
     if (
       segment.activeHighlights.length === 0 &&
       segment.inactiveHighlights.length === 0 &&
       !segment.isMaterial
     ) {
-      return <span key={index}>{segment.text}</span>;
+      return (
+        <span key={index} data-start={globalStart} className={inFlash ? 'animate-flash' : ''}>
+          {segment.text}
+        </span>
+      );
     }
     if (
       segment.activeHighlights.length === 0 &&
@@ -220,7 +307,8 @@ export function HighlightedText({
       return (
         <span
           key={index}
-          className="underline decoration-wavy decoration-gray-300 dark:decoration-gray-500 decoration-1 underline-offset-[3px]"
+          data-start={globalStart}
+          className={`underline decoration-wavy decoration-[var(--skin-underline)] decoration-2 underline-offset-[3px] ${inFlash ? 'animate-flash' : ''}`}
         >
           {segment.text}
         </span>
@@ -235,7 +323,7 @@ export function HighlightedText({
     const isHovered = segment.activeHighlights.some((h) => h.id === hoveredHighlightId);
     const bgClass = primaryHighlight ? HIGHLIGHT_COLOR_MAP[primaryHighlight.color].bg : '';
     const materialCls = segment.isMaterial
-      ? 'underline decoration-wavy decoration-gray-300 dark:decoration-gray-500 decoration-1 underline-offset-[3px]'
+      ? 'underline decoration-wavy decoration-[var(--skin-underline)] decoration-2 underline-offset-[3px]'
       : '';
     const isLastSegmentOfPrimary =
       !!primaryHighlight && lastSegmentIdxByHighlightId.get(primaryHighlight.id) === index;
@@ -243,8 +331,9 @@ export function HighlightedText({
     return (
       <span
         key={index}
+        data-start={globalStart}
         data-highlight-ids={highlightIds}
-        className={`relative inline ${bgClass} ${materialCls} ${isHovered ? 'ring-1 ring-gray-400/30 rounded-sm' : ''} transition-all`}
+        className={`relative inline ${bgClass} ${materialCls} ${inFlash ? 'animate-flash' : ''} ${isHovered ? 'ring-1 ring-gray-400/30 rounded-sm' : ''} transition-all`}
         onMouseEnter={() => {
           if (segment.activeHighlights.length > 0) {
             cancelHideHover();

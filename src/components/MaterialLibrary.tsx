@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Trash2, X, Check, Calendar, FileText, Download, FolderPlus, BookOpen, Scissors } from 'lucide-react';
+import { Search, Plus, Trash2, X, Calendar, FileText, Download, BookOpen, Scissors, ExternalLink, FolderCog, Edit3 } from 'lucide-react';
 import { useMaterialContext } from '../store/MaterialContext';
 import { useArticleContext } from '../store/ArticleContext';
 import { getCategoryColor, ConfirmDialog, Toast } from './SharedUI';
 import { AddMaterialModal } from './AddMaterialModal';
+import { ManageCategoriesModal } from './ManageCategoriesModal';
 import { KindleImportModal } from './KindleImportModal';
+import type { MaterialItem } from '../types';
 import { exportToCSV, exportToMarkdown, exportToTxt, exportToExcel } from '../services/export';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 
-export function MaterialLibrary() {
+export function MaterialLibrary({ onOpenArticle }: { onOpenArticle?: (articleId: string, offset: number) => void }) {
   const {
     state,
     addMaterial,
@@ -17,8 +19,6 @@ export function MaterialLibrary() {
     deleteMaterial,
     updateMaterial,
     getMaterialCountByCategory,
-    addCategory,
-    deleteCategoryAndMigrateMaterials,
   } = useMaterialContext();
   const { state: articleState } = useArticleContext();
 
@@ -32,14 +32,12 @@ export function MaterialLibrary() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null); // null = all
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [showKindleImport, setShowKindleImport] = useState(false);
+  const [showManageCategories, setShowManageCategories] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -69,26 +67,7 @@ export function MaterialLibrary() {
     setToast('素材已删除');
   };
 
-  // Handle delete category — migrate materials to "未分类"
-  const handleDeleteCategory = async (id: string) => {
-    const catName = state.categories.find((c) => c.id === id)?.name;
-    await deleteCategoryAndMigrateMaterials(id);
-    if (activeCategory === catName) {
-      setActiveCategory(null);
-    }
-    setConfirmDeleteCategory(null);
-    setToast('分类已删除，素材已移至「未分类」');
-  };
-
-  // Handle add category
-  const handleAddCategory = async () => {
-    if (newCategoryName.trim()) {
-      await addCategory(newCategoryName.trim());
-      setNewCategoryName('');
-      setShowNewCategory(false);
-      setToast('分类已添加');
-    }
-  };
+  // 分类的新增/改名/删除/排序统一在「整理分类」弹窗中完成
 
   // Handle add material from modal
   const handleAddMaterial = async (content: string, category: string, source: string, note: string) => {
@@ -120,6 +99,26 @@ export function MaterialLibrary() {
   const handleStartEditNote = (id: string, note: string) => {
     setEditingNoteId(id);
     setNoteDraft(note);
+  };
+
+  // 返回原文：跳转到例文详情页并定位到素材位置
+  const handleOpenOriginal = (item: MaterialItem) => {
+    if (!item.articleId || !onOpenArticle) {
+      setToast('未保存原文，无法跳转');
+      return;
+    }
+    const article = articleState.articles.find((a) => a.id === item.articleId);
+    if (!article) {
+      setToast('未保存原文，无法跳转');
+      return;
+    }
+    const offset = article.content.indexOf(item.content);
+    if (offset < 0) {
+      setToast('原文内容已变动，已定位到文章开头');
+      onOpenArticle(item.articleId, 0);
+      return;
+    }
+    onOpenArticle(item.articleId, offset);
   };
 
   // Export handler
@@ -192,69 +191,31 @@ export function MaterialLibrary() {
 
           <div className="space-y-0.5">
             {state.categories.map((cat) => (
-              <div
+              <button
                 key={cat.id}
-                className="group flex items-center"
+                onClick={() => setActiveCategory(cat.name)}
+                className={`nav-item w-full ${
+                  activeCategory === cat.name
+                    ? 'nav-item-active'
+                    : 'nav-item-inactive'
+                }`}
               >
-                <button
-                  onClick={() => setActiveCategory(cat.name)}
-                  className={`nav-item flex-1 min-w-0 ${
-                    activeCategory === cat.name
-                      ? 'nav-item-active'
-                      : 'nav-item-inactive'
-                  }`}
-                >
-                  <span className="truncate flex-1">{cat.name}</span>
-                  <span className="text-xs opacity-50 w-5 text-right shrink-0">{getMaterialCountByCategory(cat.name)}</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (cat.name === '未分类') {
-                      setToast('「未分类」为默认分类，不可删除');
-                      return;
-                    }
-                    setConfirmDeleteCategory(cat.id);
-                  }}
-                  className="btn-ghost-icon shrink-0"
-                  title={cat.name === '未分类' ? '默认分类，不可删除' : '删除分类'}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
+                <span className="truncate flex-1">{cat.name}</span>
+                <span className="text-xs opacity-50 w-5 text-right shrink-0">{getMaterialCountByCategory(cat.name)}</span>
+              </button>
             ))}
           </div>
         </div>
 
         {/* Category management */}
         <div className="p-3 border-t border-gray-200 dark:border-dark-100">
-          {showNewCategory ? (
-            <div className="flex gap-1">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
-                placeholder="输入分类名称"
-                className="flex-1 text-xs px-2 py-1.5 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-dark-100 bg-surface dark:bg-dark text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-inset"
-                autoFocus
-              />
-              <button onClick={handleAddCategory} className="text-primary hover:bg-primary/10 p-1 rounded">
-                <Check size={14} />
-              </button>
-              <button onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }} className="text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-200 p-1 rounded">
-                <X size={14} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowNewCategory(true)}
-              className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors border border-dashed border-gray-200 dark:border-dark-100 hover:border-primary/30"
-            >
-              <FolderPlus size={14} />
-              添加素材分类
-            </button>
-          )}
+          <button
+            onClick={() => setShowManageCategories(true)}
+            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 hover:text-primary hover:bg-primary/5 rounded-full transition-colors border border-dashed border-gray-200 dark:border-dark-100 hover:border-primary/30"
+          >
+            <FolderCog size={14} />
+            整理分类
+          </button>
         </div>
       </aside>
 
@@ -290,7 +251,7 @@ export function MaterialLibrary() {
           {/* Import from Kindle */}
           <button
             onClick={() => setShowKindleImport(true)}
-            className="btn-ghost"
+            className="btn-primary"
             title="从 Kindle 的 My Clippings.txt 导入标注"
           >
             <BookOpen size={14} />
@@ -301,7 +262,7 @@ export function MaterialLibrary() {
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="btn-ghost"
+              className="btn-primary"
             >
               <Download size={14} />
               导出素材
@@ -395,12 +356,13 @@ export function MaterialLibrary() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setConfirmDelete(item.id);
+                            handleOpenOriginal(item);
                           }}
-                          className="btn-ghost-icon"
-                          title="删除素材"
+                          className="text-xs text-primary hover:underline flex items-center gap-1 transition-colors shrink-0"
+                          title="跳转到例文详情页并定位到该素材位置"
                         >
-                          <Trash2 size={14} />
+                          <ExternalLink size={12} />
+                          返回原文
                         </button>
                       </div>
                     </div>
@@ -424,7 +386,7 @@ export function MaterialLibrary() {
 
                   {/* Expanded content */}
                   {expandedId === item.id && (
-                    <div className="px-4 pb-4 pt-0 border-t border-gray-100 dark:border-dark-100 animate-fade-in">
+                    <div className="px-4 pb-4 pt-3 animate-fade-in">
                       <div className="pt-3">
                         {/* Category section */}
                         <div className="flex items-start gap-2 mb-3">
@@ -459,7 +421,9 @@ export function MaterialLibrary() {
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getCategoryColor(item.category)}`}>
                                 {item.category}
                               </span>
-                              <span className="text-xs text-gray-400 ml-1">点击修改</span>
+                              <span className="text-xs text-gray-400 ml-1">
+                                <Edit3 size={11} className="inline-block opacity-70" />
+                              </span>
                             </span>
                           )}
                         </div>
@@ -499,9 +463,28 @@ export function MaterialLibrary() {
                               ) : (
                                 <span className="text-gray-400 italic">未填写</span>
                               )}
-                              <span className="text-xs text-gray-400 ml-1">点击修改</span>
+                              <span className="text-xs text-gray-400 ml-1">
+                                <Edit3 size={11} className="inline-block opacity-70" />
+                              </span>
                             </span>
                           )}
+                        </div>
+
+                        {/* 来源信息 + 删除素材 */}
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-gray-400 truncate">
+                            {item.articleId && articleTitleMap.has(item.articleId)
+                              ? `来自例文：${articleTitleMap.get(item.articleId)}`
+                              : '未关联已保存的例文'}
+                          </span>
+                          <button
+                            onClick={() => setConfirmDelete(item.id)}
+                            className="text-xs text-red-500 hover:text-red-600 hover:underline flex items-center gap-1 transition-colors shrink-0"
+                            title="删除素材"
+                          >
+                            <Trash2 size={12} />
+                            删除素材
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -532,6 +515,12 @@ export function MaterialLibrary() {
         onClose={() => setShowAddMaterial(false)}
       />
 
+      {/* Manage categories modal */}
+      <ManageCategoriesModal
+        visible={showManageCategories}
+        onClose={() => setShowManageCategories(false)}
+      />
+
       {/* Kindle import modal */}
       <KindleImportModal
         visible={showKindleImport}
@@ -556,16 +545,6 @@ export function MaterialLibrary() {
           message="确定要删除这条素材吗？此操作不可撤销。"
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
-        />
-      )}
-
-      {/* Confirm delete category */}
-      {confirmDeleteCategory && (
-        <ConfirmDialog
-          title="删除分类"
-          message={`确定要删除这个分类吗？该分类下的 ${getMaterialCountByCategory(state.categories.find((c) => c.id === confirmDeleteCategory)?.name || '')} 条素材将移至「未分类」。`}
-          onConfirm={() => handleDeleteCategory(confirmDeleteCategory)}
-          onCancel={() => setConfirmDeleteCategory(null)}
         />
       )}
     </div>
