@@ -1,6 +1,6 @@
 [package]
 name = "novel-material-collector"
-version = "2.0.0"
+version = "2.0.1"
 description = "A local tool for novel writers to collect and manage writing materials"
 authors = ["you"]
 edition = "2021"
