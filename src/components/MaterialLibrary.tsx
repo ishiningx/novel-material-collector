@@ -242,7 +242,7 @@ export function MaterialLibrary({ onOpenArticle }: { onOpenArticle?: (articleId:
           {/* Add material button */}
           <button
             onClick={() => setShowAddMaterial(true)}
-            className="btn-primary"
+            className="btn-ghost"
           >
             <Plus size={14} />
             添加新素材
@@ -251,7 +251,7 @@ export function MaterialLibrary({ onOpenArticle }: { onOpenArticle?: (articleId:
           {/* Import from Kindle */}
           <button
             onClick={() => setShowKindleImport(true)}
-            className="btn-primary"
+            className="btn-ghost"
             title="从 Kindle 的 My Clippings.txt 导入标注"
           >
             <BookOpen size={14} />
@@ -262,7 +262,7 @@ export function MaterialLibrary({ onOpenArticle }: { onOpenArticle?: (articleId:
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="btn-primary"
+              className="btn-ghost"
             >
               <Download size={14} />
               导出素材

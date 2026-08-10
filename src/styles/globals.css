@@ -6,18 +6,18 @@
  * RGB 三元组供 rgb(var(--x) / <alpha-value>) 使用；
  * 高亮色对齐原 Tailwind 色板：light = 200 号色 /60，dark = 500 号色 /20 */
 :root {
-  --skin-bg-main: 248, 250, 252;
-  --skin-bg-panel: 255, 255, 255;
-  --skin-bg-hover: 241, 245, 249;
-  --skin-text-primary: 17, 24, 39;
-  --skin-text-secondary: 107, 114, 128;
-  --skin-text-tertiary: 156, 163, 175;
-  --skin-accent: 44, 95, 110;
+  --skin-bg-main: 248 250 252;
+  --skin-bg-panel: 255 255 255;
+  --skin-bg-hover: 241 245 249;
+  --skin-text-primary: 17 24 39;
+  --skin-text-secondary: 107 114 128;
+  --skin-text-tertiary: 156 163 175;
+  --skin-accent: 44 95 110;
   --skin-accent-soft: rgba(44, 95, 110, 0.08);
-  --skin-divider: 229, 231, 235;
+  --skin-divider: 229 231 235;
   --skin-btn-text: #ffffff;
   --skin-underline: rgba(44, 95, 110, 0.35);
-  --skin-accent-dark: 44, 95, 110;
+  --skin-accent-dark: 44 95 110;
   --skin-select-ring: #ffffff;
 
   --hl-yellow-bg: rgba(254, 240, 138, 0.6);
@@ -131,7 +131,7 @@ body {
 
 /* Selection styling（跟随皮肤强调色） */
 ::selection {
-  background-color: rgba(var(--skin-accent), 0.2);
+  background-color: rgb(var(--skin-accent) / 0.2);
 }
 
 .dark ::selection {
@@ -226,13 +226,13 @@ button, a, input, select {
     background-color: transparent;
   }
   20% {
-    background-color: rgba(var(--skin-accent), 0.35);
+    background-color: rgb(var(--skin-accent) / 0.35);
   }
   40% {
     background-color: transparent;
   }
   60% {
-    background-color: rgba(var(--skin-accent), 0.35);
+    background-color: rgb(var(--skin-accent) / 0.35);
   }
   80% {
     background-color: transparent;
@@ -330,18 +330,18 @@ button, a, input, select {
 
 /* 森之呼吸：夏日窗纱透进的柔和绿意 */
 [data-skin="forest"] {
-  --skin-bg-main: 246, 248, 241;
-  --skin-bg-panel: 253, 252, 248;
-  --skin-bg-hover: 232, 240, 224;
-  --skin-text-primary: 61, 74, 44;
-  --skin-text-secondary: 122, 139, 110;
-  --skin-text-tertiary: 154, 164, 140;
-  --skin-accent: 143, 181, 115;
+  --skin-bg-main: 246 248 241;
+  --skin-bg-panel: 253 252 248;
+  --skin-bg-hover: 232 240 224;
+  --skin-text-primary: 61 74 44;
+  --skin-text-secondary: 122 139 110;
+  --skin-text-tertiary: 154 164 140;
+  --skin-accent: 143 181 115;
   --skin-accent-soft: rgba(212, 232, 197, 0.55);
-  --skin-divider: 213, 221, 208;
+  --skin-divider: 213 221 208;
   --skin-btn-text: #3d4a2c;
   --skin-underline: rgba(143, 181, 115, 0.45);
-  --skin-accent-dark: 90, 122, 63;
+  --skin-accent-dark: 90 122 63;
   --skin-select-ring: rgb(90, 122, 63);
   --skin-watermark-img: url('/skins/forest/watermark.png');
   --skin-reader-footer-img: url('/skins/forest/footer.png');
@@ -377,18 +377,18 @@ button, a, input, select {
 
 /* 喵呜午后：被猫咪和阳光包围的治愈午后 */
 [data-skin="cat"] {
-  --skin-bg-main: 253, 248, 240;
-  --skin-bg-panel: 255, 253, 249;
-  --skin-bg-hover: 255, 240, 216;
-  --skin-text-primary: 74, 64, 58;
-  --skin-text-secondary: 154, 144, 136;
-  --skin-text-tertiary: 176, 168, 160;
-  --skin-accent: 232, 152, 128;
+  --skin-bg-main: 253 248 240;
+  --skin-bg-panel: 255 253 249;
+  --skin-bg-hover: 255 240 216;
+  --skin-text-primary: 74 64 58;
+  --skin-text-secondary: 154 144 136;
+  --skin-text-tertiary: 176 168 160;
+  --skin-accent: 232 152 128;
   --skin-accent-soft: rgba(252, 232, 216, 0.65);
-  --skin-divider: 232, 224, 216;
+  --skin-divider: 232 224 216;
   --skin-btn-text: #4a403a;
   --skin-underline: rgba(232, 152, 128, 0.5);
-  --skin-accent-dark: 196, 113, 79;
+  --skin-accent-dark: 196 113 79;
   --skin-select-ring: rgb(196, 113, 79);
   --skin-watermark-img: url('/skins/cat/watermark.png');
   --skin-comment-cat-img: url('/skins/cat/cat1.png');
@@ -457,7 +457,7 @@ button, a, input, select {
 /* 背景：主背景半透明让纹理透出，面板不透明，悬停与弱底用 hover 色 */
 [data-skin]:not([data-skin="default"]) .bg-surface,
 [data-skin]:not([data-skin="default"]) .dark\:bg-dark {
-  background-color: rgba(var(--skin-bg-main), 0.92);
+  background-color: rgb(var(--skin-bg-main) / 0.92);
 }
 [data-skin]:not([data-skin="default"]) .bg-white,
 [data-skin]:not([data-skin="default"]) .dark\:bg-dark-50,
@@ -476,7 +476,7 @@ button, a, input, select {
   background-color: rgb(var(--skin-divider));
 }
 [data-skin]:not([data-skin="default"]) .dark\:bg-white\/10 {
-  background-color: rgba(var(--skin-accent), 0.12);
+  background-color: rgb(var(--skin-accent) / 0.12);
 }
 
 /* 分隔线与边框 */
@@ -501,7 +501,7 @@ button, a, input, select {
   background-color: rgb(var(--skin-bg-panel));
 }
 [data-skin]:not([data-skin="default"]) .glass-panel {
-  background-color: rgba(var(--skin-bg-panel), 0.82);
+  background-color: rgb(var(--skin-bg-panel) / 0.82);
 }
 [data-skin]:not([data-skin="default"]) .nav-item-active {
   background-color: var(--skin-accent-soft);

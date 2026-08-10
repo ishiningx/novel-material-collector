@@ -225,7 +225,7 @@ export function AppLayout({
                           {SKIN_OPTIONS.map((opt) => (
                             <button
                               key={opt.id}
-                              onClick={() => updateSettings({ skin: opt.id })}
+                              onClick={() => { updateSettings({ skin: opt.id }); setShowSettingsMenu(false); }}
                               className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${
                                 settings.skin === opt.id
                                   ? 'bg-primary/10 text-gray-900 dark:text-gray-100'
